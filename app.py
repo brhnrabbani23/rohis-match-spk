@@ -606,16 +606,9 @@ def render_metric_card_custom(label: str, value: str, sub: str = "", accent: str
     </div>
     """, unsafe_allow_html=True)
 
-
 # ---------------------------------------------------------
-# 3. KONEKSI DATABASE
+# 3. KONEKSI DATABASE (STATELESS & ANTI-LEAK)
 # ---------------------------------------------------------
-
-# ---------------------------------------------------------
-# 3. KONEKSI DATABASE
-# ---------------------------------------------------------
-
-@st.cache_resource(ttl=300) # Reset koneksi otomatis tiap 5 menit (mencegah timeout Aiven)
 def init_connection():
     return mysql.connector.connect(
         host=st.secrets["DB_HOST"],
@@ -624,20 +617,18 @@ def init_connection():
         password=st.secrets["DB_PASS"],
         database=st.secrets["DB_NAME"],
         use_pure=True,
-        autocommit=True # Mencegah data nyangkut/antre saat banyak user nyimpan barengan
+        autocommit=True,
+        connection_timeout=5 # Paksa putus otomatis jika Aiven kepenuhan
     )
 
+# Gunakan try-except agar aplikasi tidak hancur "Oh No" jika traffic sedang tinggi
 try:
     conn = init_connection()
-    # "Ketuk pintu" server Aiven. Kalau diam-diam diputus, suruh sambung ulang otomatis
-    conn.ping(reconnect=True, attempts=3, delay=1)
     cursor = conn.cursor(dictionary=True)
-except Exception:
-    # Skenario Darurat: Kalau koneksi benar-benar tabrakan, hapus memori dan paksa bikin baru
-    st.cache_resource.clear()
-    conn = init_connection()
-    conn.ping(reconnect=True, attempts=3, delay=1)
-    cursor = conn.cursor(dictionary=True)
+except Exception as e:
+    st.error("🛑 Server Database sedang penuh melayani pengguna lain. Silakan Refresh (F5) halaman ini.")
+    st.stop()
+
 
 # ---------------------------------------------------------
 # 4. SESSION STATE & LOGGING
@@ -1682,3 +1673,13 @@ else:
         halaman_hasil_spk()
     elif menu_pilihan == "⚙️ Pengaturan":
         halaman_profil()
+# ---------------------------------------------------------
+# 13. PEMBERSIHAN MEMORI (MENCEGAH PERFORMANCE LEAK)
+# ---------------------------------------------------------
+# Wajib dieksekusi di akhir script agar slot koneksi Aiven selalu 0 saat nganggur
+try:
+    if conn.is_connected():
+        cursor.close()
+        conn.close()
+except:
+    pass
