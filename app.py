@@ -610,20 +610,34 @@ def render_metric_card_custom(label: str, value: str, sub: str = "", accent: str
 # ---------------------------------------------------------
 # 3. KONEKSI DATABASE
 # ---------------------------------------------------------
-@st.cache_resource
+
+# ---------------------------------------------------------
+# 3. KONEKSI DATABASE
+# ---------------------------------------------------------
+
+@st.cache_resource(ttl=300) # Reset koneksi otomatis tiap 5 menit (mencegah timeout Aiven)
 def init_connection():
     return mysql.connector.connect(
         host=st.secrets["DB_HOST"],
-        port=st.secrets["DB_PORT"],
+        port=int(st.secrets["DB_PORT"]),
         user=st.secrets["DB_USER"],
         password=st.secrets["DB_PASS"],
         database=st.secrets["DB_NAME"],
-        use_pure=True
+        use_pure=True,
+        autocommit=True # Mencegah data nyangkut/antre saat banyak user nyimpan barengan
     )
 
-conn = init_connection()
-cursor = conn.cursor(dictionary=True)
-
+try:
+    conn = init_connection()
+    # "Ketuk pintu" server Aiven. Kalau diam-diam diputus, suruh sambung ulang otomatis
+    conn.ping(reconnect=True, attempts=3, delay=1)
+    cursor = conn.cursor(dictionary=True)
+except Exception:
+    # Skenario Darurat: Kalau koneksi benar-benar tabrakan, hapus memori dan paksa bikin baru
+    st.cache_resource.clear()
+    conn = init_connection()
+    conn.ping(reconnect=True, attempts=3, delay=1)
+    cursor = conn.cursor(dictionary=True)
 
 # ---------------------------------------------------------
 # 4. SESSION STATE & LOGGING
