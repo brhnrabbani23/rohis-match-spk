@@ -617,7 +617,8 @@ def init_connection():
         port=st.secrets["DB_PORT"],
         user=st.secrets["DB_USER"],
         password=st.secrets["DB_PASS"],
-        database=st.secrets["DB_NAME"]
+        database=st.secrets["DB_NAME"],
+        use_pure=True
     )
 
 conn = init_connection()
