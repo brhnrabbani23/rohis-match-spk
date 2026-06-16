@@ -822,14 +822,14 @@ def halaman_dashboard():
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        render_metric_card_custom("Total Anggota", f"{total_siswa}", "Siswa terdaftar", "#10b981", "👥")
+        render_metric_card_custom("Total Anggota", f"{total_siswa}", "Siswa terdaftar", "#eab308", "👥")
     with c2:
         render_metric_card_custom("Total Divisi", f"{total_divisi}", "Divisi tersedia", "#eab308", "🏷️")
     with c3:
-        render_metric_card_custom("Kriteria Penilaian", f"{total_kriteria}", "Aspek penilaian", "#1D9E75", "📋")
+        render_metric_card_custom("Kriteria Penilaian", f"{total_kriteria}", "Aspek penilaian", "#eab308", "📋")
     with c4:
         pct = f"{(total_ranked/total_siswa*100):.0f}%" if total_siswa else "0%"
-        render_metric_card_custom("Sudah Diranking", f"{total_ranked}", f"dari {total_siswa} siswa ({pct})", "#059669", "⭐")
+        render_metric_card_custom("Sudah Diranking", f"{total_ranked}", f"dari {total_siswa} siswa ({pct})", "#eab308", "⭐")
 
     render_divider_arabic()
 
@@ -1407,67 +1407,74 @@ def halaman_hasil_spk():
 
             if klasemen:
                 df_klas = pd.DataFrame(klasemen)
-                c_head, c_pdf, c_xls = st.columns([2, 1, 1])
-                with c_head:
+                
+                # Cek apakah user sedang login (Pembina/Pengurus)
+                if st.session_state.get('logged_in'):
+                    c_head, c_pdf, c_xls = st.columns([2, 1, 1])
+                    with c_head:
+                        st.markdown("### 🏆 Tabel Rekomendasi", unsafe_allow_html=True)
+                        st.caption("Kolom Nilai Kekuatan Utama menunjukkan nilai aspek yang paling penting untuk divisi yang direkomendasikan.")
+
+                    import io
+                    buf = io.BytesIO()
+                    with pd.ExcelWriter(buf, engine='openpyxl') as w:
+                        df_klas.to_excel(w, index=False, sheet_name='Klasemen ROHIS')
+                    with c_xls:
+                        st.download_button("📊 Download Excel", data=buf.getvalue(),
+                                           file_name=f"Laporan_Rohis_{datetime.date.today()}.xlsx",
+                                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                           use_container_width=True, type="primary")
+                    try:
+                        from fpdf import FPDF
+                        import tempfile, os
+
+                        class PDF(FPDF):
+                            def header(self):
+                                self.set_font('Arial','B',12)
+                                self.cell(0,10,'Laporan Hasil Penempatan Divisi ROHIS SMPN 87 Jakarta',0,1,'C')
+                                if st.session_state['filter_divisi'] != "Semua Divisi":
+                                    self.set_font('Arial','I',10)
+                                    self.cell(0,8,f"Kategori: {st.session_state['filter_divisi']}",0,1,'C')
+                                self.ln(5)
+
+                        pdf = PDF()
+                        pdf.add_page()
+                        headers = ["Rank","Nama Siswa","Kelas","Nilai Utama","Tk. Kecocokan","Rekomendasi Divisi"]
+                        widths  = [12, 45, 12, 18, 25, 78]
+                        pdf.set_font("Arial",'B',9)
+                        for h, w in zip(headers, widths):
+                            pdf.cell(w, 10, h, 1, 0, 'C')
+                        pdf.ln()
+                        pdf.set_font("Arial", size=8)
+                        for _, row in df_klas.iterrows():
+                            pdf.cell(widths[0], 8, str(row['Rank']), 1, 0, 'C')
+                            pdf.cell(widths[1], 8, str(row['Nama Siswa'])[:22], 1, 0, 'L')
+                            pdf.cell(widths[2], 8, str(row['Kelas']), 1, 0, 'C')
+                            pdf.cell(widths[3], 8, str(row['Nilai Kekuatan Utama']), 1, 0, 'C')
+                            pdf.cell(widths[4], 8, str(row['Tingkat Kecocokan']), 1, 0, 'C')
+                            rek = str(row['Rekomendasi Divisi'])
+                            if len(rek) > 45: rek = rek[:42] + "..."
+                            pdf.cell(widths[5], 8, rek, 1, 0, 'L')
+                            pdf.ln()
+
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                            pdf.output(tmp.name)
+                            with open(tmp.name, "rb") as f:
+                                pdf_bytes = f.read()
+                        os.remove(tmp.name)
+
+                        with c_pdf:
+                            st.download_button("📄 Download PDF", data=pdf_bytes,
+                                               file_name=f"Laporan_Rohis_{datetime.date.today()}.pdf",
+                                               mime="application/pdf",
+                                               use_container_width=True, type="primary")
+                    except ImportError:
+                        with c_pdf:
+                            st.error("Install fpdf: pip install fpdf")
+                else:
+                    # Tampilan khusus Tamu Publik (Tanpa tombol Export)
                     st.markdown("### 🏆 Tabel Rekomendasi", unsafe_allow_html=True)
                     st.caption("Kolom Nilai Kekuatan Utama menunjukkan nilai aspek yang paling penting untuk divisi yang direkomendasikan.")
-
-                import io
-                buf = io.BytesIO()
-                with pd.ExcelWriter(buf, engine='openpyxl') as w:
-                    df_klas.to_excel(w, index=False, sheet_name='Klasemen ROHIS')
-                with c_xls:
-                    st.download_button("📊 Download Excel", data=buf.getvalue(),
-                                       file_name=f"Laporan_Rohis_{datetime.date.today()}.xlsx",
-                                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                       use_container_width=True, type="primary")
-                try:
-                    from fpdf import FPDF
-                    import tempfile, os
-
-                    class PDF(FPDF):
-                        def header(self):
-                            self.set_font('Arial','B',12)
-                            self.cell(0,10,'Laporan Hasil Penempatan Divisi ROHIS SMPN 87 Jakarta',0,1,'C')
-                            if st.session_state['filter_divisi'] != "Semua Divisi":
-                                self.set_font('Arial','I',10)
-                                self.cell(0,8,f"Kategori: {st.session_state['filter_divisi']}",0,1,'C')
-                            self.ln(5)
-
-                    pdf = PDF()
-                    pdf.add_page()
-                    headers = ["Rank","Nama Siswa","Kelas","Nilai Utama","Tk. Kecocokan","Rekomendasi Divisi"]
-                    widths  = [12, 45, 12, 18, 25, 78]
-                    pdf.set_font("Arial",'B',9)
-                    for h, w in zip(headers, widths):
-                        pdf.cell(w, 10, h, 1, 0, 'C')
-                    pdf.ln()
-                    pdf.set_font("Arial", size=8)
-                    for _, row in df_klas.iterrows():
-                        pdf.cell(widths[0], 8, str(row['Rank']), 1, 0, 'C')
-                        pdf.cell(widths[1], 8, str(row['Nama Siswa'])[:22], 1, 0, 'L')
-                        pdf.cell(widths[2], 8, str(row['Kelas']), 1, 0, 'C')
-                        pdf.cell(widths[3], 8, str(row['Nilai Kekuatan Utama']), 1, 0, 'C')
-                        pdf.cell(widths[4], 8, str(row['Tingkat Kecocokan']), 1, 0, 'C')
-                        rek = str(row['Rekomendasi Divisi'])
-                        if len(rek) > 45: rek = rek[:42] + "..."
-                        pdf.cell(widths[5], 8, rek, 1, 0, 'L')
-                        pdf.ln()
-
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                        pdf.output(tmp.name)
-                        with open(tmp.name, "rb") as f:
-                            pdf_bytes = f.read()
-                    os.remove(tmp.name)
-
-                    with c_pdf:
-                        st.download_button("📄 Download PDF", data=pdf_bytes,
-                                           file_name=f"Laporan_Rohis_{datetime.date.today()}.pdf",
-                                           mime="application/pdf",
-                                           use_container_width=True, type="primary")
-                except ImportError:
-                    with c_pdf:
-                        st.error("Install fpdf: pip install fpdf")
 
                 st.dataframe(df_klas, hide_index=True, use_container_width=True)
             else:
