@@ -1591,8 +1591,8 @@ def halaman_hasil_spk():
                                 id_div = DIVISI_IDS.get(row['Divisi / Peminatan'])
                                 if id_div:
                                     cursor.execute(
-                                        "INSERT INTO hasil_ranking (kd_siswa, id_divisi, skor_akhir) VALUES (%s, %s, %s)",
-                                        (kd_siswa, id_div, float(row['Skor Akhir']))
+                                        "INSERT INTO hasil_ranking (kd_siswa, id_divisi, nilai_ncf, nilai_nsf, skor_akhir) VALUES (%s, %s, %s, %s, %s)",
+                                        (kd_siswa, id_div, float(row['NCF']), float(row['NSF']), float(row['Skor Akhir']))
                                     )
                                     saved.append(row['Divisi / Peminatan'])
                             conn.commit()
