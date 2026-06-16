@@ -8,6 +8,7 @@
 
 import streamlit as st
 import mysql.connector
+from mysql.connector import pooling
 import pandas as pd
 import time
 import datetime
@@ -607,26 +608,31 @@ def render_metric_card_custom(label: str, value: str, sub: str = "", accent: str
     """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3. KONEKSI DATABASE (STATELESS & ANTI-LEAK)
+# 3. KONEKSI DATABASE (CONNECTION POOLING)
 # ---------------------------------------------------------
-def init_connection():
-    return mysql.connector.connect(
+@st.cache_resource
+def init_connection_pool():
+    # Membuat "garasi" berisi maksimal 3 koneksi yang standby terus
+    return pooling.MySQLConnectionPool(
+        pool_name="rohis_pool",
+        pool_size=3, # Maksimal 3 koneksi (Aman untuk Aiven Free Tier)
+        pool_reset_session=True,
         host=st.secrets["DB_HOST"],
         port=int(st.secrets["DB_PORT"]),
         user=st.secrets["DB_USER"],
         password=st.secrets["DB_PASS"],
         database=st.secrets["DB_NAME"],
         use_pure=True,
-        autocommit=True,
-        connection_timeout=5 # Paksa putus otomatis jika Aiven kepenuhan
+        autocommit=True
     )
 
-# Gunakan try-except agar aplikasi tidak hancur "Oh No" jika traffic sedang tinggi
 try:
-    conn = init_connection()
+    # Ambil koneksi yang lagi nganggur dari garasi (pool)
+    pool = init_connection_pool()
+    conn = pool.get_connection()
     cursor = conn.cursor(dictionary=True)
 except Exception as e:
-    st.error("🛑 Server Database sedang penuh melayani pengguna lain. Silakan Refresh (F5) halaman ini.")
+    st.error("🛑 Server Database sibuk. Silakan coba klik sekali lagi.")
     st.stop()
 
 
@@ -1673,13 +1679,13 @@ else:
         halaman_hasil_spk()
     elif menu_pilihan == "⚙️ Pengaturan":
         halaman_profil()
+
 # ---------------------------------------------------------
-# 13. PEMBERSIHAN MEMORI (MENCEGAH PERFORMANCE LEAK)
+# 13. PEMBERSIHAN MEMORI (MENGEMBALIKAN KONEKSI KE POOL)
 # ---------------------------------------------------------
-# Wajib dieksekusi di akhir script agar slot koneksi Aiven selalu 0 saat nganggur
 try:
     if conn.is_connected():
         cursor.close()
-        conn.close()
+        conn.close() # Mengembalikan koneksi ke dalam Pool agar tidak leak
 except:
     pass
