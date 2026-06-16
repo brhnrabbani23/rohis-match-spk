@@ -982,7 +982,7 @@ def halaman_data_siswa():
         
             # Tampilkan df_tampil, tapi biarkan df_siswa utuh untuk fitur Edit & Hapus di bawahnya
             st.dataframe(df_tampil, use_container_width=True, hide_index=True)
-        else:
+    else:
             st.info("Belum ada data anggota yang terdaftar.")
             df_siswa = pd.DataFrame()
 
