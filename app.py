@@ -858,10 +858,14 @@ def halaman_dashboard():
             df_sebaran = pd.DataFrame(data_sebaran)
             df_sebaran = df_sebaran.rename(columns={'nama_divisi': 'Divisi', 'jumlah': 'Jumlah Siswa'})
             df_sebaran = df_sebaran.set_index('Divisi')
+
+            # Urutkan data dari jumlah terbanyak biar diagramnya ngebentuk tangga (rapi)
+            df_sebaran = df_sebaran.sort_values(by='Jumlah Siswa', ascending=True)
+            
             try:
-                st.bar_chart(df_sebaran, color="#10b981")
-            except TypeError:
-                st.bar_chart(df_sebaran)
+                st.bar_chart(df_sebaran, color="#10b981", horizontal=True)
+            except Exception:
+                st.bar_chart(df_sebaran, horizontal=True)
         else:
             st.info("Belum ada data penempatan divisi.")
 
@@ -967,10 +971,17 @@ def halaman_data_siswa():
         <div style="font-size:13px;font-weight:500;color:#10b981;margin-bottom:10px;">📋 Daftar Anggota Terdaftar</div>
     """, unsafe_allow_html=True)
 
-    if data_siswa:
+if data_siswa:
         df_siswa = pd.DataFrame(data_siswa)
         df_siswa.columns = ['ID Siswa', 'Nama Lengkap', 'Kelas']
-        st.dataframe(df_siswa, use_container_width=True, hide_index=True)
+        
+        # Bikin salinan khusus untuk UI: Tambah kolom 'No.' berurutan & hilangkan 'ID Siswa'
+        df_tampil = df_siswa.copy()
+        df_tampil.insert(0, 'No.', range(1, len(df_tampil) + 1))
+        df_tampil = df_tampil[['No.', 'Nama Lengkap', 'Kelas']]
+        
+        # Tampilkan df_tampil, tapi biarkan df_siswa utuh untuk fitur Edit & Hapus di bawahnya
+        st.dataframe(df_tampil, use_container_width=True, hide_index=True)
     else:
         st.info("Belum ada data anggota yang terdaftar.")
         df_siswa = pd.DataFrame()
