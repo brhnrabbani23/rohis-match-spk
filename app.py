@@ -561,7 +561,7 @@ def render_topbar(menu_name: str):
         <div style="display:flex;align-items:center;gap:8px;">
             <div style="width:3px;height:22px;background:#10b981;border-radius:2px;"></div>
             <span style="font-size:16px;font-weight:600;color:#e2e8f0;">{menu_name}</span>
-            <span style="font-size:12px;color:#3d6b5a;">· Tahun Ajaran 2024-2025</span>
+            <span style="font-size:12px;color:#3d6b5a;">· Tahun Ajaran 2026</span>
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
             <div style="
