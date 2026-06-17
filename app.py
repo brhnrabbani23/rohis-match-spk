@@ -1311,39 +1311,42 @@ def halaman_hasil_spk():
 
             ncf_nilai = 0.0
             rata_rata_asli_100 = 0.0
-            nilai_murni_core_100 = 0.0
+            dict_asli_utama = {} # <--- KAMUS RAHASIA PENYIMPAN NILAI SEMUA DIVISI
             
-            if div_name in TARGET_DIVISI and marks:
+            list_rekomendasi = row['nama_divisi'].split(" / ")
+            div_pertama = list_rekomendasi[0] # Untuk ngitung NCF bawaan
+            
+            if marks:
                 na = {f"K{m['id_kriteria']}": m['nilai_aktual'] for m in marks}
                 if len(na) == 5:
                     # 1. Hitung Nilai Asli Keseluruhan (Skala 100)
                     rata_rata_asli_100 = (sum(na.values()) / 25.0) * 100
                     
-                    ncf_t, ncf_c = 0, 0
-                    core_raw_sum = 0
-                    core_count = 0
-                    
-                    for k in ["K1","K2","K3","K4","K5"]:
-                        t = TARGET_DIVISI[div_name][k]
-                        aktual = na[k]
-                        gap = aktual - t
-                        
-                        if t >= 4: # Hanya hitung Kriteria Utama (Core Factor)
-                            ncf_t += bobot_gap(gap)
-                            ncf_c += 1
-                            core_raw_sum += aktual
-                            core_count += 1
-                            
-                    ncf_nilai = ncf_t / ncf_c if ncf_c > 0 else 0.0
-                    # 2. Hitung Nilai Asli Syarat Utama saja (Skala 100) tanpa pinalti gap
-                    nilai_murni_core_100 = (core_raw_sum / (core_count * 5.0)) * 100 if core_count > 0 else 0.0
+                    # 2. Hitung NCF Default (Berdasarkan divisi pertama)
+                    if div_pertama in TARGET_DIVISI:
+                        ncf_t, ncf_c = 0, 0
+                        for k in ["K1","K2","K3","K4","K5"]:
+                            t = TARGET_DIVISI[div_pertama][k]
+                            if t >= 4:
+                                ncf_t += bobot_gap(na[k] - t)
+                                ncf_c += 1
+                        ncf_nilai = ncf_t / ncf_c if ncf_c > 0 else 0.0
+
+                    # 3. Hitung Nilai Asli Syarat Utama UNTUK SETIAP DIVISI di Rohis
+                    for div in TARGET_DIVISI.keys():
+                        core_sum, core_count = 0, 0
+                        for k in ["K1","K2","K3","K4","K5"]:
+                            if TARGET_DIVISI[div][k] >= 4:
+                                core_sum += na[k]
+                                core_count += 1
+                        dict_asli_utama[div] = (core_sum / (core_count * 5.0)) * 100 if core_count > 0 else 0.0
 
             data.append({
                 "Nama Siswa": row['nama_siswa'],
                 "Kelas": row['kelas'],
                 "Asli Keseluruhan": rata_rata_asli_100,
-                "Asli Syarat Utama": nilai_murni_core_100,
-                "NCF": ncf_nilai,
+                "Dict Asli Utama": dict_asli_utama, # <--- Disimpan sembunyi-sembunyi
+                "Kecocokan Syarat Utama (NCF)": ncf_nilai,
                 "Skor (%)": persen,
                 "Rekomendasi": row['nama_divisi'],
             })
@@ -1432,17 +1435,26 @@ def halaman_hasil_spk():
                 data_fil = [d for d in data_fil if st.session_state['filter_divisi'] in d['Rekomendasi']]
 
             klasemen = []
+            filter_aktif = st.session_state['filter_divisi']
+            
             for idx, d in enumerate(data_fil):
-                klasemen.append({
+                row_data = {
                     "Rank": idx + 1,
                     "Nama Siswa": d['Nama Siswa'],
                     "Kelas": d['Kelas'],
                     "Asli Keseluruhan": f"{d['Asli Keseluruhan']:.1f}",
-                    "Asli Syarat Utama": f"{d['Asli Syarat Utama']:.1f}",
-                    "Kekuatan Utama (NCF)": f"{d['NCF']:.2f}",
-                    "Kecocokan Divisi": f"{d['Skor (%)']:.2f}%",
-                    "Rekomendasi": d['Rekomendasi'],
-                })
+                }
+                
+                # JURUS SULAP: Munculkan kolom 'Asli Syarat Utama' HANYA JIKA klik divisi spesifik!
+                if filter_aktif != "Semua Divisi":
+                    nilai_spesifik = d['Dict Asli Utama'].get(filter_aktif, 0.0)
+                    row_data["Asli Syarat Utama"] = f"{nilai_spesifik:.1f}"
+                    
+                row_data["Kecocokan Syarat Utama (NCF)"] = f"{d['Kecocokan Syarat Utama (NCF)']:.2f}"
+                row_data["Kecocokan Divisi"] = f"{d['Skor (%)']:.2f}%"
+                row_data["Rekomendasi"] = d['Rekomendasi']
+                
+                klasemen.append(row_data)
 
             if klasemen:
                 df_klas = pd.DataFrame(klasemen)
@@ -1479,25 +1491,49 @@ def halaman_hasil_spk():
                         pdf = PDF()
                         pdf.add_page()
                         # Tambah Header Rata2 dan atur ulang lebar tabel PDF agar muat di kertas A4
-                        headers = ["Rank", "Nama Siswa", "Kls", "Asli Total", "Asli Utama", "Kekuatan(NCF)", "Kecocokan", "Divisi"]
-                        widths  = [10, 36, 9, 16, 17, 21, 18, 63]
-                        pdf.set_font("Arial",'B',9)
-                        for h, w in zip(headers, widths):
-                            pdf.cell(w, 10, h, 1, 0, 'C')
-                        pdf.ln()
-                        pdf.set_font("Arial", size=8)
-                        for _, row in df_klas.iterrows():
-                            pdf.cell(widths[0], 8, str(row['Rank']), 1, 0, 'C')
-                            pdf.cell(widths[1], 8, str(row['Nama Siswa'])[:20], 1, 0, 'L')
-                            pdf.cell(widths[2], 8, str(row['Kelas']), 1, 0, 'C')
-                            pdf.cell(widths[3], 8, str(row['Asli Keseluruhan']), 1, 0, 'C')
-                            pdf.cell(widths[4], 8, str(row['Asli Syarat Utama']), 1, 0, 'C')
-                            pdf.cell(widths[5], 8, str(row['Kekuatan Utama (NCF)']), 1, 0, 'C')
-                            pdf.cell(widths[6], 8, str(row['Kecocokan Divisi']), 1, 0, 'C')
-                            rek = str(row['Rekomendasi'])
-                            if len(rek) > 35: rek = rek[:32] + "..."
-                            pdf.cell(widths[7], 8, rek, 1, 0, 'L')
+                        filter_aktif = st.session_state['filter_divisi']
+                        
+                        if filter_aktif == "Semua Divisi":
+                            # PDF Format 7 Kolom (Tanpa Asli Utama)
+                            headers = ["Rank", "Nama Siswa", "Kls", "Asli Total", "Kekuatan(NCF)", "Kecocokan", "Divisi"]
+                            widths  = [10, 42, 10, 18, 22, 20, 68]
+                            pdf.set_font("Arial",'B',9)
+                            for h, w in zip(headers, widths):
+                                pdf.cell(w, 10, h, 1, 0, 'C')
                             pdf.ln()
+                            pdf.set_font("Arial", size=8)
+                            for _, row in df_klas.iterrows():
+                                pdf.cell(widths[0], 8, str(row['Rank']), 1, 0, 'C')
+                                pdf.cell(widths[1], 8, str(row['Nama Siswa'])[:22], 1, 0, 'L')
+                                pdf.cell(widths[2], 8, str(row['Kelas']), 1, 0, 'C')
+                                pdf.cell(widths[3], 8, str(row['Asli Keseluruhan']), 1, 0, 'C')
+                                pdf.cell(widths[4], 8, str(row['Kecocokan Syarat Utama (NCF)']), 1, 0, 'C')
+                                pdf.cell(widths[5], 8, str(row['Kecocokan Divisi']), 1, 0, 'C')
+                                rek = str(row['Rekomendasi'])
+                                if len(rek) > 40: rek = rek[:37] + "..."
+                                pdf.cell(widths[6], 8, rek, 1, 0, 'L')
+                                pdf.ln()
+                        else:
+                            # PDF Format 8 Kolom (Ada Asli Utama Spesifik Divisi Tersebut)
+                            headers = ["Rank", "Nama Siswa", "Kls", "Asli Total", "Asli Utama", "Kekuatan(NCF)", "Kecocokan", "Divisi"]
+                            widths  = [10, 36, 9, 16, 17, 21, 18, 63]
+                            pdf.set_font("Arial",'B',9)
+                            for h, w in zip(headers, widths):
+                                pdf.cell(w, 10, h, 1, 0, 'C')
+                            pdf.ln()
+                            pdf.set_font("Arial", size=8)
+                            for _, row in df_klas.iterrows():
+                                pdf.cell(widths[0], 8, str(row['Rank']), 1, 0, 'C')
+                                pdf.cell(widths[1], 8, str(row['Nama Siswa'])[:20], 1, 0, 'L')
+                                pdf.cell(widths[2], 8, str(row['Kelas']), 1, 0, 'C')
+                                pdf.cell(widths[3], 8, str(row['Asli Keseluruhan']), 1, 0, 'C')
+                                pdf.cell(widths[4], 8, str(row['Asli Syarat Utama']), 1, 0, 'C')
+                                pdf.cell(widths[5], 8, str(row['Kecocokan Syarat Utama (NCF)']), 1, 0, 'C')
+                                pdf.cell(widths[6], 8, str(row['Kecocokan Divisi']), 1, 0, 'C')
+                                rek = str(row['Rekomendasi'])
+                                if len(rek) > 35: rek = rek[:32] + "..."
+                                pdf.cell(widths[7], 8, rek, 1, 0, 'L')
+                                pdf.ln()
 
                         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                             pdf.output(tmp.name)
