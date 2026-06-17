@@ -614,7 +614,11 @@ def render_metric_card_custom(label: str, value: str, sub: str = "", accent: str
 # 3. KONEKSI DATABASE (STATELESS & ANTI-LEAK)
 # ---------------------------------------------------------
 
-def create_new_connection():
+# ---------------------------------------------------------
+# 3. KONEKSI DATABASE (AUTO-RECONNECT CLOUD)
+# ---------------------------------------------------------
+@st.cache_resource(ttl=300) # Reset otomatis tiap 5 menit biar Aiven nggak nendang
+def init_connection():
     return mysql.connector.connect(
         host=st.secrets["DB_HOST"],
         port=int(st.secrets["DB_PORT"]),
@@ -622,22 +626,20 @@ def create_new_connection():
         password=st.secrets["DB_PASS"],
         database=st.secrets["DB_NAME"],
         use_pure=True,
-        autocommit=True # Wajib agar data langsung tersimpan
+        autocommit=True
     )
 
-# 1. Simpan koneksi secara eksklusif untuk masing-masing user (Private Session)
-if 'db_conn' not in st.session_state:
-    st.session_state['db_conn'] = create_new_connection()
-
-conn = st.session_state['db_conn']
-
-# 2. Fitur Auto-Reconnect: Cek denyut nadi koneksi sebelum ngapa-ngapain
 try:
+    conn = init_connection()
+    # Ping diam-diam. Kalau diputus Aiven, otomatis nyambung lagi tanpa error di layar
     conn.ping(reconnect=True, attempts=3, delay=1)
+    cursor = conn.cursor(dictionary=True)
 except Exception:
-    # Kalau terowongan diputus karena user kelamaan AFK, otomatis bikin baru!
-    st.session_state['db_conn'] = create_new_connection()
-    conn = st.session_state['db_conn']
+    # Kalau nyangkut, bersihkan memori dan paksa sambung ulang secara gaib
+    st.cache_resource.clear()
+    conn = init_connection()
+    conn.ping(reconnect=True, attempts=3, delay=1)
+    cursor = conn.cursor(dictionary=True)
 
 # 3. Bikin kursor khusus untuk eksekusi query
 cursor = conn.cursor(dictionary=True)
