@@ -1441,7 +1441,7 @@ def halaman_hasil_spk():
                 with c2:
                     render_metric_card_custom("Tingkat Kecocokan", f"{d['Skor (%)']:.2f}%", "Seberapa cocok nilai siswa dengan kebutuhan divisi", "#eab308", "📊")
                 with c3:
-                    render_metric_card_custom("Kelayakan Karakter", f"{d['NCF']:.2f} / 5.0", "Nilai aspek paling penting pada divisi ini", "#1D9E75", "⭐")
+                    render_metric_card_custom("Kelayakan Karakter", f"{d['NCF']:.2f} / 5.0", "Kesesuaian sifat dengan kriteria wajib divisi ini", "#1D9E75", "⭐")
 
                 st.markdown(f"""
                 <div style="background:#0a1e18;border:1px solid #12241f;border-radius:10px;padding:16px;margin-top:12px;">
