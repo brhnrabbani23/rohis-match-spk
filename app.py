@@ -609,45 +609,34 @@ def render_metric_card_custom(label: str, value: str, sub: str = "", accent: str
 # ---------------------------------------------------------
 # 3. KONEKSI DATABASE (MULTI-USER ISOLATION)
 # ---------------------------------------------------------
+                                                                                                                                                                                                                                                                                                                                                                                                                                              
+def create_new_connection():                                                                                                                                                                                                                                                                                                                                                                         
+    return mysql.connector.connect(                                                                                                                                                                                                                                                                                                                                               
+        host=st.secrets["DB_HOST"],                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+        port=int(st.secrets["DB_PORT"]),                                                                                                                                                                                                                                                         
+        user=st.secrets["DB_USER"],                                                                                                                                                                                                                                                                                                                                                                                                                                              
+        password=st.secrets["DB_PASS"],                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
+        database=st.secrets["DB_NAME"],                                                                                                                            
+        use_pure=True,                                                                                                                                   
+        autocommit=True # Wajib agar data langsung tersimpan                                                                                                                             
+    )                                                                                                                                                                                                                                                                
 
-# ---------------------------------------------------------
-# 3. KONEKSI DATABASE (SMART POOLING & SESSION)
-# ---------------------------------------------------------                                                                                                                                                                                                                   
-from mysql.connector import pooling                                                                                                                                                      
-@st.cache_resource                                                                                                                                                                      
-def get_connection_pool():                                                                                                                                 
-    return pooling.MySQLConnectionPool(
-        pool_name="rohis_pool",
-        pool_size=5, 
-        host=st.secrets["DB_HOST"],
-        port=int(st.secrets["DB_PORT"]),
-        user=st.secrets["DB_USER"],
-        password=st.secrets["DB_PASS"],
-        database=st.secrets["DB_NAME"],
-        use_pure=True,
-        autocommit=True
-    )
+# 1. Simpan koneksi secara eksklusif untuk masing-masing user (Private Session)
+if 'db_conn' not in st.session_state:
+    st.session_state['db_conn'] = create_new_connection()
 
+conn = st.session_state['db_conn']
+
+# 2. Fitur Auto-Reconnect: Cek denyut nadi koneksi sebelum ngapa-ngapain
 try:
-    pool = get_connection_pool()
-    
-    # Ambil koneksi dari pool dan simpan di kantong user (Session State)
-    # Ini bikin aplikasi SUPER CEPAT (gak loading SSL terus) & kebal st.rerun()
-    if 'db_conn' not in st.session_state or not st.session_state['db_conn'].is_connected():
-        st.session_state['db_conn'] = pool.get_connection()
-        
-    conn = st.session_state['db_conn']
-    
-    # Ping diam-diam buat mastiin koneksi masih jalan
     conn.ping(reconnect=True, attempts=3, delay=1)
-    cursor = conn.cursor(dictionary=True)
-    
-except Exception as e:
-    # Auto-reset kalau tiba-tiba nyangkut
-    if 'db_conn' in st.session_state:
-        del st.session_state['db_conn']
-    st.error("🛑 Gagal terhubung! Kuota Database Aiven Penuh (Max 4). Pastikan aplikasi DBeaver/HeidiSQL lu DITUTUP, lalu Refresh (F5).")
-    st.stop()
+except Exception:
+    # Kalau terowongan diputus karena user kelamaan AFK, otomatis bikin baru!
+    st.session_state['db_conn'] = create_new_connection()
+    conn = st.session_state['db_conn']
+
+# 3. Bikin kursor khusus untuk eksekusi query
+cursor = conn.cursor(dictionary=True)                                                                                                                                                                                                                  
 
 # ---------------------------------------------------------
 # 4. SESSION STATE & LOGGING
