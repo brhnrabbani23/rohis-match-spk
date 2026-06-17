@@ -883,7 +883,7 @@ def halaman_dashboard():
             border-radius:10px;padding:16px;
         ">
             <div style="font-size:13px;font-weight:500;color:#cbd5e1;margin-bottom:12px;">
-                🏆 Top Nilai Asli Anggota
+                🏆 Top 10 Anggota dengan Nilai Keseluruhan Terbaik
             </div>
         """, unsafe_allow_html=True)
 
