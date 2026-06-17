@@ -7,7 +7,7 @@
 # =========================================================
 
 import streamlit as st
-import mysql.connectorF
+import mysql.connector
 import pandas as pd
 import time
 import datetime
