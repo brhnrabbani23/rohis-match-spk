@@ -1171,9 +1171,15 @@ def halaman_input_nilai():
         st.warning("⚠️ Data Master belum lengkap. Lengkapi Data Anggota dan Kriteria terlebih dahulu.")
         return
 
-    opsi_siswa = {f"{s['kd_siswa']} - {s['nama_siswa']}": s['kd_siswa'] for s in data_siswa}
-    pilih = st.selectbox("🎓 Pilih Siswa yang Dinilai:", list(opsi_siswa.keys()))
-    kd_terpilih = opsi_siswa[pilih]
+    # Buat dictionary pemetaan ID ke Nama Siswa
+    map_siswa = {s['kd_siswa']: s['nama_siswa'] for s in data_siswa}
+    
+    # Gunakan format_func untuk menyembunyikan ID di layar (tampil nama doang)
+    kd_terpilih = st.selectbox(
+        "🎓 Pilih Siswa yang Dinilai:", 
+        options=list(map_siswa.keys()),
+        format_func=lambda x: map_siswa[x]
+    )
 
     pilihan_skala = [
         "1 - Sangat Kurang",
@@ -1498,15 +1504,22 @@ def halaman_hasil_spk():
             }
             df_target = pd.DataFrame(DATA_TARGET)
 
-            cursor.execute("SELECT kd_siswa, nama_siswa FROM siswa")
+            # Tambahkan ORDER BY nama_siswa ASC agar namanya urut dari A ke Z
+            cursor.execute("SELECT kd_siswa, nama_siswa FROM siswa ORDER BY nama_siswa ASC")
             data_siswa = cursor.fetchall()
 
             if not data_siswa:
                 st.warning("Belum ada data siswa di database.")
             else:
-                opsi = [f"{s['kd_siswa']} - {s['nama_siswa']}" for s in data_siswa]
-                pilih = st.selectbox("Pilih siswa untuk melihat proses rekomendasinya:", opsi)
-                kd_siswa = int(pilih.split(" - ")[0])
+                # Buat dictionary pemetaan ID ke Nama Siswa
+                map_siswa = {s['kd_siswa']: s['nama_siswa'] for s in data_siswa}
+                
+                # Gunakan format_func untuk menyembunyikan ID dari pandangan user
+                kd_siswa = st.selectbox(
+                    "Pilih siswa untuk melihat proses rekomendasinya:", 
+                    options=list(map_siswa.keys()),
+                    format_func=lambda x: map_siswa[x]
+                )
 
                 cursor.execute(
                     "SELECT id_kriteria, nilai_aktual FROM nilai_siswa WHERE kd_siswa = %s ORDER BY id_kriteria ASC",
