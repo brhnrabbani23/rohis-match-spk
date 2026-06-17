@@ -11,6 +11,7 @@ import mysql.connector
 import pandas as pd
 import time
 import datetime
+import altair as alt
 
 # ---------------------------------------------------------
 # 1. KONFIGURASI HALAMAN & TEMA ROHIS (REDESIGN)
@@ -850,18 +851,28 @@ def halaman_dashboard():
             GROUP BY d.id_divisi
         """)
         data_sebaran = cursor.fetchall()
+        
         if data_sebaran:
             df_sebaran = pd.DataFrame(data_sebaran)
             df_sebaran = df_sebaran.rename(columns={'nama_divisi': 'Divisi', 'jumlah': 'Jumlah Siswa'})
-            df_sebaran = df_sebaran.set_index('Divisi')
-
-            # Urutkan data dari jumlah terbanyak biar diagramnya ngebentuk tangga (rapi)
-            df_sebaran = df_sebaran.sort_values(by='Jumlah Siswa', ascending=True)
             
-            try:
-                st.bar_chart(df_sebaran, color="#10b981", horizontal=True)
-            except Exception:
-                st.bar_chart(df_sebaran, horizontal=True)
+            # Modern UI: Vertical Bar Chart dengan ujung atas melengkung (Rounded Pill)
+            chart = alt.Chart(df_sebaran).mark_bar(
+                color='#10b981',
+                cornerRadiusTopLeft=8,
+                cornerRadiusTopRight=8,
+                size=38  # Ketebalan bar biar terlihat padat dan modern
+            ).encode(
+                x=alt.X('Divisi:N', sort='-y', axis=alt.Axis(labelAngle=-40, title=None, labelColor='#cbd5e1', labelFontSize=11)),
+                y=alt.Y('Jumlah Siswa:Q', axis=alt.Axis(grid=True, gridColor='#1b382e', title=None, labelColor='#cbd5e1', tickMinStep=1)),
+                tooltip=[alt.Tooltip('Divisi:N', title='Nama Divisi'), alt.Tooltip('Jumlah Siswa:Q', title='Total Anggota')]
+            ).properties(
+                height=320
+            ).configure_view(
+                strokeWidth=0 # Menghilangkan garis tepi luar kotak chart agar menyatu dengan background
+            )
+            
+            st.altair_chart(chart, use_container_width=True)
         else:
             st.info("Belum ada data penempatan divisi.")
 
