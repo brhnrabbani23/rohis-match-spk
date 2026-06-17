@@ -1566,48 +1566,51 @@ def halaman_hasil_spk():
                                     self.cell(0,8,f"Kategori: {st.session_state['filter_divisi']}",0,1,'C')
                                 self.ln(5)
 
-                        pdf = PDF()
+                        # JURUS SULAP: Ubah kertas ke Landscape ('L')
+                        pdf = PDF('L', 'mm', 'A4') 
                         pdf.add_page()
-                        # Tambah Header Rata2 dan atur ulang lebar tabel PDF agar muat di kertas A4
+                        
                         filter_aktif = st.session_state['filter_divisi']
                         
                         if filter_aktif == "Semua Divisi":
-                            headers = ["Rank", "Nama Siswa", "Kelas", "Tes Umum(100)", "Kelayakan(5)", "Kecocokan(%)", "Rekomendasi"]
-                            widths  = [10, 42, 10, 20, 18, 22, 68]
+                            # PDF Format 7 Kolom (Kertas Landscape luasnya ~277mm)
+                            headers = ["Rank", "Nama Siswa", "Kls", "Tes Umum (100)", "Kelayakan (5)", "Kecocokan(%)", "Rekomendasi"]
+                            widths  = [12, 55, 12, 30, 25, 25, 118] # Total Pas 277mm
 
-                            pdf.set_font("Arial", 'B', 9)
+                            pdf.set_font("Arial", 'B', 9) # Font bisa digedein lagi ke 9
                             for h, w in zip(headers, widths):
                                 pdf.cell(w, 10, h, 1, 0, 'C')
                             pdf.ln()
 
-                            pdf.set_font("Arial", size=8)
+                            pdf.set_font("Arial", size=9)
                             for _, row in df_klas.iterrows():
                                 pdf.cell(widths[0], 8, str(row['Rank']), 1, 0, 'C')
-                                pdf.cell(widths[1], 8, str(row['Nama Siswa'])[:22], 1, 0, 'L')
+                                pdf.cell(widths[1], 8, str(row['Nama Siswa'])[:30], 1, 0, 'L') # Nama bisa lebih panjang
                                 pdf.cell(widths[2], 8, str(row['Kelas']), 1, 0, 'C')
                                 pdf.cell(widths[3], 8, str(row['Nilai Tes Keseluruhan (Max 100)']), 1, 0, 'C')
                                 pdf.cell(widths[4], 8, str(row['Kelayakan Karakter (Max 5.0)']), 1, 0, 'C')
                                 pdf.cell(widths[5], 8, str(row['Persentase Kecocokan (Max 100%)']), 1, 0, 'C')
 
                                 rek = str(row['Rekomendasi'])
-                                if len(rek) > 40:
-                                    rek = rek[:37] + "..."
+                                if len(rek) > 75:
+                                    rek = rek[:72] + "..." # Teks rekomendasi bisa panjang banget
                                 pdf.cell(widths[6], 8, rek, 1, 0, 'L')
                                 pdf.ln()
 
                         else:
-                            headers = ["Rank", "Nama Siswa", "Kelas", "Tes Umum(100)", "Tes Khusus(100)", "Kelayakan(5)", "Cocok(%)", "Fokus Divisi"]
-                            widths  = [10, 36, 9, 16, 18, 18, 18, 65]
+                            # PDF Format 8 Kolom (Kertas Landscape ~277mm)
+                            headers = ["Rank", "Nama Siswa", "Kls", "Umum(100)", "Khusus(100)", "Karakter(5)", "Cocok(%)", "Fokus Divisi"]
+                            widths  = [10, 48, 10, 23, 23, 22, 22, 119] # Total Pas 277mm
 
-                            pdf.set_font("Arial", 'B', 9)
+                            pdf.set_font("Arial", 'B', 9) # Font dibalikin ke 9
                             for h, w in zip(headers, widths):
                                 pdf.cell(w, 10, h, 1, 0, 'C')
                             pdf.ln()
 
-                            pdf.set_font("Arial", size=8)
+                            pdf.set_font("Arial", size=9)
                             for _, row in df_klas.iterrows():
                                 pdf.cell(widths[0], 8, str(row['Rank']), 1, 0, 'C')
-                                pdf.cell(widths[1], 8, str(row['Nama Siswa'])[:20], 1, 0, 'L')
+                                pdf.cell(widths[1], 8, str(row['Nama Siswa'])[:25], 1, 0, 'L')
                                 pdf.cell(widths[2], 8, str(row['Kelas']), 1, 0, 'C')
                                 pdf.cell(widths[3], 8, str(row['Nilai Tes Keseluruhan (Max 100)']), 1, 0, 'C')
                                 pdf.cell(widths[4], 8, str(row['Nilai Tes Khusus Divisi Ini (Max 100)']), 1, 0, 'C')
@@ -1615,8 +1618,8 @@ def halaman_hasil_spk():
                                 pdf.cell(widths[6], 8, str(row['Persentase Kecocokan (Max 100%)']), 1, 0, 'C')
 
                                 fokus = str(row['Fokus Divisi'])
-                                if len(fokus) > 38:
-                                    fokus = fokus[:35] + "..."
+                                if len(fokus) > 70:
+                                    fokus = fokus[:67] + "..." # Divisi bisa muat panjang
                                 pdf.cell(widths[7], 8, fokus, 1, 0, 'L')
                                 pdf.ln()
                        
