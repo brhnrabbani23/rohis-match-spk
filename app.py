@@ -613,7 +613,8 @@ def render_metric_card_custom(label: str, value: str, sub: str = "", accent: str
 # ---------------------------------------------------------
 # 3. KONEKSI DATABASE (STATELESS & ANTI-LEAK)
 # ---------------------------------------------------------
-def init_connection():
+
+def create_new_connection():
     return mysql.connector.connect(
         host=st.secrets["DB_HOST"],
         port=int(st.secrets["DB_PORT"]),
@@ -621,17 +622,25 @@ def init_connection():
         password=st.secrets["DB_PASS"],
         database=st.secrets["DB_NAME"],
         use_pure=True,
-        autocommit=True,
-        connection_timeout=5 # Paksa putus otomatis kalau server Aiven kepenuhan
+        autocommit=True # Wajib agar data langsung tersimpan
     )
 
-# Gunakan try-except agar web tidak hancur kalau sedang diakses banyak orang
+# 1. Simpan koneksi secara eksklusif untuk masing-masing user (Private Session)
+if 'db_conn' not in st.session_state:
+    st.session_state['db_conn'] = create_new_connection()
+
+conn = st.session_state['db_conn']
+
+# 2. Fitur Auto-Reconnect: Cek denyut nadi koneksi sebelum ngapa-ngapain
 try:
-    conn = init_connection()
-    cursor = conn.cursor(dictionary=True)
-except Exception as e:
-    st.error("🛑 Server Database sedang penuh. Silakan Refresh (F5) halaman ini.")
-    st.stop()
+    conn.ping(reconnect=True, attempts=3, delay=1)
+except Exception:
+    # Kalau terowongan diputus karena user kelamaan AFK, otomatis bikin baru!
+    st.session_state['db_conn'] = create_new_connection()
+    conn = st.session_state['db_conn']
+
+# 3. Bikin kursor khusus untuk eksekusi query
+cursor = conn.cursor(dictionary=True)
 
 # ---------------------------------------------------------
 # 4. SESSION STATE & LOGGING
@@ -1707,14 +1716,3 @@ else:
         halaman_hasil_spk()
     elif menu_pilihan == "⚙️ Pengaturan":
         halaman_profil()
-
-# ---------------------------------------------------------
-# 13. PEMBERSIHAN MEMORI (MENCEGAH CONNECTION LEAK)
-# ---------------------------------------------------------
-# Baris ini wajib berada di paling akhir agar koneksi Aiven selalu ditutup setelah UI selesai dirender
-try:
-    if 'conn' in locals() and conn.is_connected():
-        cursor.close()
-        conn.close()
-except:
-    pass
