@@ -607,13 +607,13 @@ def render_metric_card_custom(label: str, value: str, sub: str = "", accent: str
     """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3. KONEKSI DATABASE (CONNECTION POOLING)
-# ---------------------------------------------------------
-# ---------------------------------------------------------
 # 3. KONEKSI DATABASE (MULTI-USER ISOLATION)
 # ---------------------------------------------------------
 
-def create_new_connection():
+# ---------------------------------------------------------
+# 3. KONEKSI DATABASE (STATELESS & ANTI-LEAK)
+# ---------------------------------------------------------
+def init_connection():
     return mysql.connector.connect(
         host=st.secrets["DB_HOST"],
         port=int(st.secrets["DB_PORT"]),
@@ -621,26 +621,17 @@ def create_new_connection():
         password=st.secrets["DB_PASS"],
         database=st.secrets["DB_NAME"],
         use_pure=True,
-        autocommit=True # Wajib agar data langsung tersimpan
+        autocommit=True,
+        connection_timeout=5 # Paksa putus otomatis kalau server Aiven kepenuhan
     )
 
-# 1. Simpan koneksi secara eksklusif untuk masing-masing user (Private Session)
-if 'db_conn' not in st.session_state:
-    st.session_state['db_conn'] = create_new_connection()
-
-conn = st.session_state['db_conn']
-
-# 2. Fitur Auto-Reconnect: Cek denyut nadi koneksi sebelum ngapa-ngapain
+# Gunakan try-except agar web tidak hancur kalau sedang diakses banyak orang
 try:
-    conn.ping(reconnect=True, attempts=3, delay=1)
-except Exception:
-    # Kalau terowongan diputus karena user kelamaan AFK, otomatis bikin baru!
-    st.session_state['db_conn'] = create_new_connection()
-    conn = st.session_state['db_conn']
-
-# 3. Bikin kursor khusus untuk eksekusi query
-cursor = conn.cursor(dictionary=True)
-
+    conn = init_connection()
+    cursor = conn.cursor(dictionary=True)
+except Exception as e:
+    st.error("🛑 Server Database sedang penuh. Silakan Refresh (F5) halaman ini.")
+    st.stop()
 
 # ---------------------------------------------------------
 # 4. SESSION STATE & LOGGING
@@ -1504,15 +1495,22 @@ def halaman_hasil_spk():
             }
             df_target = pd.DataFrame(DATA_TARGET)
 
-            cursor.execute("SELECT kd_siswa, nama_siswa FROM siswa")
+            # Tambahkan ORDER BY nama_siswa ASC agar namanya urut dari A ke Z
+            cursor.execute("SELECT kd_siswa, nama_siswa FROM siswa ORDER BY nama_siswa ASC")
             data_siswa = cursor.fetchall()
 
             if not data_siswa:
                 st.warning("Belum ada data siswa di database.")
             else:
-                opsi = [f"{s['kd_siswa']} - {s['nama_siswa']}" for s in data_siswa]
-                pilih = st.selectbox("Pilih siswa untuk melihat proses rekomendasinya:", opsi)
-                kd_siswa = int(pilih.split(" - ")[0])
+                # Buat dictionary pemetaan ID ke Nama Siswa
+                map_siswa = {s['kd_siswa']: s['nama_siswa'] for s in data_siswa}
+                
+                # Gunakan format_func untuk menyembunyikan ID dari pandangan user
+                kd_siswa = st.selectbox(
+                    "Pilih siswa untuk melihat proses rekomendasinya:", 
+                    options=list(map_siswa.keys()),
+                    format_func=lambda x: map_siswa[x]
+                )
                 
                 cursor.execute(
                     "SELECT id_kriteria, nilai_aktual FROM nilai_siswa WHERE kd_siswa = %s ORDER BY id_kriteria ASC",
@@ -1710,3 +1708,13 @@ else:
     elif menu_pilihan == "⚙️ Pengaturan":
         halaman_profil()
 
+# ---------------------------------------------------------
+# 13. PEMBERSIHAN MEMORI (MENCEGAH CONNECTION LEAK)
+# ---------------------------------------------------------
+# Baris ini wajib berada di paling akhir agar koneksi Aiven selalu ditutup setelah UI selesai dirender
+try:
+    if 'conn' in locals() and conn.is_connected():
+        cursor.close()
+        conn.close()
+except:
+    pass
