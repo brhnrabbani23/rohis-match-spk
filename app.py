@@ -883,22 +883,25 @@ def halaman_dashboard():
             border-radius:10px;padding:16px;
         ">
             <div style="font-size:13px;font-weight:500;color:#cbd5e1;margin-bottom:12px;">
-                🏆 Top Ranking
+                🏆 Top Nilai Asli Anggota
             </div>
         """, unsafe_allow_html=True)
 
         # Kueri baru: Menghitung rata-rata mentah (1-100) dari nilai aktual siswa
         cursor.execute("""
             SELECT s.nama_siswa, s.kelas,
-                   (SELECT GROUP_CONCAT(d.nama_divisi SEPARATOR ' / ') 
-                    FROM hasil_ranking h 
-                    JOIN divisi d ON h.id_divisi = d.id_divisi 
-                    WHERE h.kd_siswa = s.kd_siswa) as nama_divisi,
-                   (SUM(n.nilai_aktual) / 25.0) * 100 as rata_rata_100
+                   COALESCE((
+                       SELECT GROUP_CONCAT(d.nama_divisi SEPARATOR ' / ') 
+                       FROM hasil_ranking h 
+                       JOIN divisi d ON h.id_divisi = d.id_divisi 
+                       WHERE h.kd_siswa = s.kd_siswa
+                   ), 'Belum Ditentukan') as nama_divisi,
+                   AVG(n.nilai_aktual) * 20 as rata_rata_100
             FROM siswa s
             JOIN nilai_siswa n ON s.kd_siswa = n.kd_siswa
             WHERE s.kd_siswa IN (SELECT kd_siswa FROM hasil_ranking)
             GROUP BY s.kd_siswa, s.nama_siswa, s.kelas
+            HAVING COUNT(DISTINCT n.id_kriteria) = 5
             ORDER BY rata_rata_100 DESC
             LIMIT 5
         """)
@@ -931,7 +934,7 @@ def halaman_dashboard():
                         <div style="font-size:11px;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{siswa['nama_siswa']}</div>
                         <div style="font-size:10px;color:#64748b;">{divisi}</div>
                     </div>
-                    <div style="font-size:12px;font-weight:700;color:{text_color};">{skor_pct:.1f}%</div>
+                    <div style="font-size:12px;font-weight:700;color:{text_color};">{skor_pct:.1f}/100</div>
                 </div>
                 """, unsafe_allow_html=True)
         else:
@@ -1270,16 +1273,31 @@ def halaman_hasil_spk():
     """, unsafe_allow_html=True)
 
     TARGET_DIVISI = {
-        "Syiar":             {"K1": 3, "K2": 3, "K3": 4, "K4": 3, "K5": 4},
-        "Tilawah (Kesenian)":{"K1": 4, "K2": 4, "K3": 3, "K4": 3, "K5": 4},
-        "Da'i (Kesenian)":   {"K1": 3, "K2": 4, "K3": 4, "K4": 3, "K5": 4},
-        "Seni/Kaligrafi":    {"K1": 3, "K2": 3, "K3": 3, "K4": 4, "K5": 4},
-        "PSDM":              {"K1": 3, "K2": 3, "K3": 4, "K4": 4, "K5": 4},
-        "Sosial":            {"K1": 3, "K2": 3, "K3": 4, "K4": 3, "K5": 4},
-        "Takmir Musholla":   {"K1": 4, "K2": 4, "K3": 4, "K4": 3, "K5": 4},
-        "CCI (Kesenian)":    {"K1": 4, "K2": 4, "K3": 4, "K4": 4, "K5": 4},
-        "Tahfidz (Kesenian)":{"K1": 4, "K2": 4, "K3": 3, "K4": 3, "K5": 4},
+        "Syiar":              {"K1": 3, "K2": 3, "K3": 4, "K4": 3, "K5": 4},
+        "Tilawah (Kesenian)": {"K1": 4, "K2": 4, "K3": 3, "K4": 3, "K5": 4},
+        "Da'i (Kesenian)":    {"K1": 3, "K2": 4, "K3": 4, "K4": 3, "K5": 4},
+        "Seni/Kaligrafi":     {"K1": 3, "K2": 3, "K3": 3, "K4": 4, "K5": 4},
+        "PSDM":               {"K1": 4, "K2": 4, "K3": 4, "K4": 3, "K5": 4},
+        "Sosial":             {"K1": 3, "K2": 3, "K3": 4, "K4": 3, "K5": 4},
+        "Takmir Musholla":    {"K1": 4, "K2": 4, "K3": 4, "K4": 3, "K5": 4},
+        "CCI (Kesenian)":     {"K1": 4, "K2": 4, "K3": 4, "K4": 3, "K5": 4},
+        "Tahfidz (Kesenian)": {"K1": 4, "K2": 4, "K3": 3, "K4": 3, "K5": 4},
     }
+
+    # Core Factor ditentukan berdasarkan validasi mitra, bukan berdasarkan angka target >= 4.
+    CORE_FACTOR_DIVISI = {
+        "Syiar":              ["K3", "K5"],
+        "Tilawah (Kesenian)": ["K1", "K2", "K5"],
+        "Da'i (Kesenian)":    ["K2", "K3", "K5"],
+        "Seni/Kaligrafi":     ["K4", "K5"],
+        "PSDM":               ["K3", "K5"],
+        "Sosial":             ["K3", "K5"],
+        "Takmir Musholla":    ["K1", "K2", "K5"],
+        "CCI (Kesenian)":     ["K1", "K2", "K5"],
+        "Tahfidz (Kesenian)": ["K1", "K2", "K5"],
+    }
+
+    K_LIST = ["K1", "K2", "K3", "K4", "K5"]
 
     DIVISI_IDS = {
         "Syiar": 1, "Tilawah (Kesenian)": 2, "Da'i (Kesenian)": 3,
@@ -1287,71 +1305,101 @@ def halaman_hasil_spk():
         "Takmir Musholla": 7, "CCI (Kesenian)": 8, "Tahfidz (Kesenian)": 9
     }
 
+    def hitung_detail_divisi(na, div_name):
+        target = TARGET_DIVISI.get(div_name)
+        core_list = CORE_FACTOR_DIVISI.get(div_name, [])
+
+        if not target or not core_list:
+            return {
+                "Asli Keseluruhan": 0.0,
+                "Asli Syarat Utama": 0.0,
+                "NCF": 0.0,
+                "NSF": 0.0,
+                "Skor Akhir": 0.0,
+                "Kecocokan Divisi": 0.0,
+            }
+
+        secondary_list = [k for k in K_LIST if k not in core_list]
+
+        bobot = {}
+        for k in K_LIST:
+            gap = int(na[k]) - int(target[k])
+            bobot[k] = bobot_gap(gap)
+
+        ncf = sum(bobot[k] for k in core_list) / len(core_list)
+        nsf = sum(bobot[k] for k in secondary_list) / len(secondary_list) if secondary_list else 0.0
+        skor_akhir = (0.6 * ncf) + (0.4 * nsf)
+
+        asli_keseluruhan = (sum(int(na[k]) for k in K_LIST) / 25.0) * 100
+        asli_syarat_utama = (sum(int(na[k]) for k in core_list) / (len(core_list) * 5.0)) * 100
+
+        return {
+            "Asli Keseluruhan": asli_keseluruhan,
+            "Asli Syarat Utama": asli_syarat_utama,
+            "NCF": ncf,
+            "NSF": nsf,
+            "Skor Akhir": skor_akhir,
+            "Kecocokan Divisi": (skor_akhir / 5.0) * 100,
+        }
+
     def get_data_klasemen():
         cursor.execute("""
-            SELECT h.kd_siswa, s.nama_siswa, s.kelas, h.skor_akhir,
-                   GROUP_CONCAT(d.nama_divisi SEPARATOR ' / ') as nama_divisi
+            SELECT h.kd_siswa, s.nama_siswa, s.kelas,
+                   MAX(h.skor_akhir) AS skor_akhir,
+                   GROUP_CONCAT(d.nama_divisi SEPARATOR ' / ') AS nama_divisi
             FROM hasil_ranking h
             JOIN siswa s ON h.kd_siswa = s.kd_siswa
             JOIN divisi d ON h.id_divisi = d.id_divisi
-            GROUP BY h.kd_siswa, s.nama_siswa, s.kelas, h.skor_akhir
+            GROUP BY h.kd_siswa, s.nama_siswa, s.kelas
         """)
         hasil_db = cursor.fetchall()
+
         if not hasil_db:
             return []
 
         data = []
-        for row in hasil_db:
-            skor_float = float(row['skor_akhir'])
-            persen = (skor_float / 5.0) * 100
-            div_name = row['nama_divisi'].split(" / ")[0]
 
-            cursor.execute("SELECT id_kriteria, nilai_aktual FROM nilai_siswa WHERE kd_siswa = %s", (row['kd_siswa'],))
+        for row in hasil_db:
+            cursor.execute("""
+                SELECT id_kriteria, nilai_aktual
+                FROM nilai_siswa
+                WHERE kd_siswa = %s
+            """, (row['kd_siswa'],))
             marks = cursor.fetchall()
 
-            ncf_nilai = 0.0
-            rata_rata_asli_100 = 0.0
-            dict_asli_utama = {} # <--- KAMUS RAHASIA PENYIMPAN NILAI SEMUA DIVISI
-            
-            list_rekomendasi = row['nama_divisi'].split(" / ")
-            div_pertama = list_rekomendasi[0] # Untuk ngitung NCF bawaan
-            
-            if marks:
-                na = {f"K{m['id_kriteria']}": m['nilai_aktual'] for m in marks}
-                if len(na) == 5:
-                    # 1. Hitung Nilai Asli Keseluruhan (Skala 100)
-                    rata_rata_asli_100 = (sum(na.values()) / 25.0) * 100
-                    
-                    # 2. Hitung NCF Default (Berdasarkan divisi pertama)
-                    if div_pertama in TARGET_DIVISI:
-                        ncf_t, ncf_c = 0, 0
-                        for k in ["K1","K2","K3","K4","K5"]:
-                            t = TARGET_DIVISI[div_pertama][k]
-                            if t >= 4:
-                                ncf_t += bobot_gap(na[k] - t)
-                                ncf_c += 1
-                        ncf_nilai = ncf_t / ncf_c if ncf_c > 0 else 0.0
+            na = {f"K{m['id_kriteria']}": int(m['nilai_aktual']) for m in marks}
 
-                    # 3. Hitung Nilai Asli Syarat Utama UNTUK SETIAP DIVISI di Rohis
-                    for div in TARGET_DIVISI.keys():
-                        core_sum, core_count = 0, 0
-                        for k in ["K1","K2","K3","K4","K5"]:
-                            if TARGET_DIVISI[div][k] >= 4:
-                                core_sum += na[k]
-                                core_count += 1
-                        dict_asli_utama[div] = (core_sum / (core_count * 5.0)) * 100 if core_count > 0 else 0.0
+            if len(na) != 5:
+                continue
+
+            detail_semua_divisi = {}
+            for div in TARGET_DIVISI.keys():
+                detail_semua_divisi[div] = hitung_detail_divisi(na, div)
+
+            rekomendasi_text = row['nama_divisi'] if row['nama_divisi'] else "Belum Ditentukan"
+            divisi_utama = rekomendasi_text.split(" / ")[0]
+            detail_utama = detail_semua_divisi.get(divisi_utama, {})
+
+            skor_float = float(row['skor_akhir']) if row['skor_akhir'] is not None else detail_utama.get("Skor Akhir", 0.0)
+            persen = (skor_float / 5.0) * 100
 
             data.append({
+                "Kd Siswa": row['kd_siswa'],
                 "Nama Siswa": row['nama_siswa'],
                 "Kelas": row['kelas'],
-                "Asli Keseluruhan": rata_rata_asli_100,
-                "Dict Asli Utama": dict_asli_utama, # <--- Disimpan sembunyi-sembunyi
-                "Kecocokan Syarat Utama (NCF)": ncf_nilai,
+                "Asli Keseluruhan": detail_utama.get("Asli Keseluruhan", 0.0),
+                "Detail Divisi": detail_semua_divisi,
+                "NCF": detail_utama.get("NCF", 0.0),
+                "NSF": detail_utama.get("NSF", 0.0),
                 "Skor (%)": persen,
-                "Rekomendasi": row['nama_divisi'],
+                "Rekomendasi": rekomendasi_text,
             })
-            
-        data.sort(key=lambda x: (x['NCF'], x['Skor (%)']), reverse=True)
+
+        data.sort(
+            key=lambda x: (x["Skor (%)"], x["NCF"], x["Asli Keseluruhan"]),
+            reverse=True
+        )
+
         return data
 
     def render_tabel_klasemen():
@@ -1430,30 +1478,53 @@ def halaman_hasil_spk():
 
             render_divider_arabic()
 
-            data_fil = data_mentah.copy()
-            if st.session_state['filter_divisi'] != "Semua Divisi":
-                data_fil = [d for d in data_fil if st.session_state['filter_divisi'] in d['Rekomendasi']]
-
-            klasemen = []
             filter_aktif = st.session_state['filter_divisi']
             
+            if filter_aktif == "Semua Divisi":
+                data_fil = data_mentah.copy()
+                data_fil.sort(
+                    key=lambda x: (x["Skor (%)"], x["NCF"], x["Asli Keseluruhan"]),
+                    reverse=True
+                )
+            else:
+                data_fil = data_mentah.copy()
+                data_fil.sort(
+                    key=lambda x: (
+                        x["Detail Divisi"].get(filter_aktif, {}).get("Asli Syarat Utama", 0.0),
+                        x["Detail Divisi"].get(filter_aktif, {}).get("NCF", 0.0),
+                        x["Detail Divisi"].get(filter_aktif, {}).get("Kecocokan Divisi", 0.0),
+                    ),
+                    reverse=True
+                )
+
+            klasemen = []
+
             for idx, d in enumerate(data_fil):
-                row_data = {
-                    "Rank": idx + 1,
-                    "Nama Siswa": d['Nama Siswa'],
-                    "Kelas": d['Kelas'],
-                    "Asli Keseluruhan": f"{d['Asli Keseluruhan']:.1f}",
-                }
-                
-                # JURUS SULAP: Munculkan kolom 'Asli Syarat Utama' HANYA JIKA klik divisi spesifik!
-                if filter_aktif != "Semua Divisi":
-                    nilai_spesifik = d['Dict Asli Utama'].get(filter_aktif, 0.0)
-                    row_data["Asli Syarat Utama"] = f"{nilai_spesifik:.1f}"
-                    
-                row_data["Kecocokan Syarat Utama (NCF)"] = f"{d['Kecocokan Syarat Utama (NCF)']:.2f}"
-                row_data["Kecocokan Divisi"] = f"{d['Skor (%)']:.2f}%"
-                row_data["Rekomendasi"] = d['Rekomendasi']
-                
+                if filter_aktif == "Semua Divisi":
+                    row_data = {
+                        "Rank": idx + 1,
+                        "Nama Siswa": d["Nama Siswa"],
+                        "Kelas": d["Kelas"],
+                        "Asli Keseluruhan": f"{d['Asli Keseluruhan']:.1f}",
+                        "Kecocokan Syarat Utama (NCF)": f"{d['NCF']:.2f}",
+                        "Kecocokan Divisi": f"{d['Skor (%)']:.2f}%",
+                        "Rekomendasi": d["Rekomendasi"],
+                    }
+                else:
+                    detail_fokus = d["Detail Divisi"].get(filter_aktif, {})
+
+                    row_data = {
+                        "Rank": idx + 1,
+                        "Nama Siswa": d["Nama Siswa"],
+                        "Kelas": d["Kelas"],
+                        "Asli Keseluruhan": f"{detail_fokus.get('Asli Keseluruhan', 0.0):.1f}",
+                        "Asli Syarat Utama": f"{detail_fokus.get('Asli Syarat Utama', 0.0):.1f}",
+                        "Kecocokan Syarat Utama (NCF)": f"{detail_fokus.get('NCF', 0.0):.2f}",
+                        "Kecocokan Divisi": f"{detail_fokus.get('Kecocokan Divisi', 0.0):.2f}%",
+                        "Fokus Divisi": filter_aktif,
+                        "Rekomendasi Utama": d["Rekomendasi"],
+                    }
+
                 klasemen.append(row_data)
 
             if klasemen:
@@ -1464,7 +1535,11 @@ def halaman_hasil_spk():
                     c_head, c_pdf, c_xls = st.columns([2, 1, 1])
                     with c_head:
                         st.markdown("### 🏆 Tabel Rekomendasi", unsafe_allow_html=True)
-                        st.caption("Kolom Nilai Kekuatan Utama menunjukkan nilai aspek yang paling penting untuk divisi yang direkomendasikan.")
+                        
+                        if st.session_state['filter_divisi'] == "Semua Divisi":
+                            st.caption("Tabel menampilkan ranking rekomendasi utama berdasarkan hasil Profile Matching.")
+                        else:
+                            st.caption(f"Tabel menampilkan ranking talenta untuk divisi {st.session_state['filter_divisi']} berdasarkan nilai asli syarat utama, NCF, dan kecocokan divisi.")
 
                     import io
                     buf = io.BytesIO()
@@ -1494,13 +1569,14 @@ def halaman_hasil_spk():
                         filter_aktif = st.session_state['filter_divisi']
                         
                         if filter_aktif == "Semua Divisi":
-                            # PDF Format 7 Kolom (Tanpa Asli Utama)
-                            headers = ["Rank", "Nama Siswa", "Kls", "Asli Total", "Kekuatan(NCF)", "Kecocokan", "Divisi"]
-                            widths  = [10, 42, 10, 18, 22, 20, 68]
-                            pdf.set_font("Arial",'B',9)
+                            headers = ["Rank", "Nama Siswa", "Kls", "Asli Total", "NCF", "Kecocokan", "Rekomendasi"]
+                            widths  = [10, 42, 10, 20, 18, 22, 68]
+
+                            pdf.set_font("Arial", 'B', 9)
                             for h, w in zip(headers, widths):
                                 pdf.cell(w, 10, h, 1, 0, 'C')
                             pdf.ln()
+
                             pdf.set_font("Arial", size=8)
                             for _, row in df_klas.iterrows():
                                 pdf.cell(widths[0], 8, str(row['Rank']), 1, 0, 'C')
@@ -1509,18 +1585,22 @@ def halaman_hasil_spk():
                                 pdf.cell(widths[3], 8, str(row['Asli Keseluruhan']), 1, 0, 'C')
                                 pdf.cell(widths[4], 8, str(row['Kecocokan Syarat Utama (NCF)']), 1, 0, 'C')
                                 pdf.cell(widths[5], 8, str(row['Kecocokan Divisi']), 1, 0, 'C')
+
                                 rek = str(row['Rekomendasi'])
-                                if len(rek) > 40: rek = rek[:37] + "..."
+                                if len(rek) > 40:
+                                    rek = rek[:37] + "..."
                                 pdf.cell(widths[6], 8, rek, 1, 0, 'L')
                                 pdf.ln()
+
                         else:
-                            # PDF Format 8 Kolom (Ada Asli Utama Spesifik Divisi Tersebut)
-                            headers = ["Rank", "Nama Siswa", "Kls", "Asli Total", "Asli Utama", "Kekuatan(NCF)", "Kecocokan", "Divisi"]
-                            widths  = [10, 36, 9, 16, 17, 21, 18, 63]
-                            pdf.set_font("Arial",'B',9)
+                            headers = ["Rank", "Nama Siswa", "Kls", "Asli Total", "Asli Utama", "NCF", "Cocok", "Fokus Divisi"]
+                            widths  = [10, 36, 9, 16, 18, 18, 18, 65]
+
+                            pdf.set_font("Arial", 'B', 9)
                             for h, w in zip(headers, widths):
                                 pdf.cell(w, 10, h, 1, 0, 'C')
                             pdf.ln()
+
                             pdf.set_font("Arial", size=8)
                             for _, row in df_klas.iterrows():
                                 pdf.cell(widths[0], 8, str(row['Rank']), 1, 0, 'C')
@@ -1530,10 +1610,13 @@ def halaman_hasil_spk():
                                 pdf.cell(widths[4], 8, str(row['Asli Syarat Utama']), 1, 0, 'C')
                                 pdf.cell(widths[5], 8, str(row['Kecocokan Syarat Utama (NCF)']), 1, 0, 'C')
                                 pdf.cell(widths[6], 8, str(row['Kecocokan Divisi']), 1, 0, 'C')
-                                rek = str(row['Rekomendasi'])
-                                if len(rek) > 35: rek = rek[:32] + "..."
-                                pdf.cell(widths[7], 8, rek, 1, 0, 'L')
+
+                                fokus = str(row['Fokus Divisi'])
+                                if len(fokus) > 38:
+                                    fokus = fokus[:35] + "..."
+                                pdf.cell(widths[7], 8, fokus, 1, 0, 'L')
                                 pdf.ln()
+                       
 
                         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                             pdf.output(tmp.name)
@@ -1552,7 +1635,11 @@ def halaman_hasil_spk():
                 else:
                     # Tampilan khusus Tamu Publik (Tanpa tombol Export)
                     st.markdown("### 🏆 Tabel Rekomendasi", unsafe_allow_html=True)
-                    st.caption("Kolom Nilai Kekuatan Utama menunjukkan nilai aspek yang paling penting untuk divisi yang direkomendasikan.")
+                    
+                    if st.session_state['filter_divisi'] == "Semua Divisi":
+                        st.caption("Tabel menampilkan ranking rekomendasi utama berdasarkan hasil Profile Matching.")
+                    else:
+                        st.caption(f"Tabel menampilkan ranking talenta untuk divisi {st.session_state['filter_divisi']} berdasarkan nilai asli syarat utama, NCF, dan kecocokan divisi.")
 
                 st.dataframe(df_klas, hide_index=True, use_container_width=True)
             else:
@@ -1563,18 +1650,10 @@ def halaman_hasil_spk():
         tab_kalkulasi, tab_klasemen = st.tabs(["🧮 Kalkulasi Nilai", "📊 Klasemen & Rekomendasi"])
 
         with tab_kalkulasi:
-            DATA_TARGET = {
-                "Divisi / Peminatan": [
-                    "Syiar","Tilawah (Kesenian)","Da'i (Kesenian)","Seni/Kaligrafi",
-                    "PSDM","Sosial","Takmir Musholla","CCI (Kesenian)","Tahfidz (Kesenian)"
-                ],
-                "K1": [3,4,3,3,3,3,4,4,4],
-                "K2": [3,4,4,3,3,3,4,4,4],
-                "K3": [4,3,4,3,4,4,4,4,3],
-                "K4": [3,3,3,4,4,3,3,3,3],
-                "K5": [4,4,4,4,4,4,4,4,4],
-            }
-            df_target = pd.DataFrame(DATA_TARGET)
+            df_target = pd.DataFrame([
+                {"Divisi / Peminatan": divisi, **target}
+                for divisi, target in TARGET_DIVISI.items()
+            ])
 
             # Tambahkan ORDER BY nama_siswa ASC agar namanya urut dari A ke Z
             cursor.execute("SELECT kd_siswa, nama_siswa FROM siswa ORDER BY nama_siswa ASC")
@@ -1629,16 +1708,25 @@ def halaman_hasil_spk():
                     for i, row in df_gap.iterrows():
                         ncf_t, ncf_c = 0, 0
                         nsf_t, nsf_c = 0, 0
+                        
+                        divisi_hitung = row['Divisi / Peminatan']
+                        core_list = CORE_FACTOR_DIVISI.get(divisi_hitung, [])
+
                         for k in kriteria_list:
                             target = df_target.loc[i, k]
                             aktual = nilai_aktual[k]
                             gap = aktual - target
                             df_gap.loc[i, k] = gap
+
                             b = bobot_gap(gap)
-                            if target >= 4:
-                                ncf_t += b; ncf_c += 1
-                            elif target == 3:
-                                nsf_t += b; nsf_c += 1
+
+                            if k in core_list:
+                                ncf_t += b
+                                ncf_c += 1
+                            else:
+                                nsf_t += b
+                                nsf_c += 1
+                                
                         ncf = ncf_t / ncf_c if ncf_c > 0 else 0
                         nsf = nsf_t / nsf_c if nsf_c > 0 else 0
                         hasil_perh.append({
