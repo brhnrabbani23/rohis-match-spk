@@ -1441,7 +1441,7 @@ def halaman_hasil_spk():
                 with c2:
                     render_metric_card_custom("Tingkat Kecocokan", f"{d['Skor (%)']:.2f}%", "Seberapa cocok nilai siswa dengan kebutuhan divisi", "#eab308", "📊")
                 with c3:
-                    render_metric_card_custom("Kekuatan Utama", f"{d['NCF']:.2f}/5.00", "Nilai aspek paling penting pada divisi ini (NCF)", "#1D9E75", "⭐")
+                    render_metric_card_custom("Kelayakan Karakter f"{d['NCF']:.2f}/5.00", "Nilai aspek paling penting pada divisi ini", "#1D9E75", "⭐")
 
                 st.markdown(f"""
                 <div style="background:#0a1e18;border:1px solid #12241f;border-radius:10px;padding:16px;margin-top:12px;">
@@ -1508,9 +1508,9 @@ def halaman_hasil_spk():
                         "Rank": idx + 1,
                         "Nama Siswa": d["Nama Siswa"],
                         "Kelas": d["Kelas"],
-                        "Asli Keseluruhan": f"{d['Asli Keseluruhan']:.1f}",
-                        "Kecocokan Syarat Utama (NCF)": f"{d['NCF']:.2f}",
-                        "Kecocokan Divisi": f"{d['Skor (%)']:.2f}%",
+                        "Nilai Tes Keseluruhan (Max 100)": f"{d['Asli Keseluruhan']:.1f}",
+                        "Kelayakan Karakter (Max 5.0)": f"{d['NCF']:.2f}",
+                        "Persentase Kecocokan (Max 100%)": f"{d['Skor (%)']:.2f}%",
                         "Rekomendasi": d["Rekomendasi"],
                     }
                 else:
@@ -1520,10 +1520,10 @@ def halaman_hasil_spk():
                         "Rank": idx + 1,
                         "Nama Siswa": d["Nama Siswa"],
                         "Kelas": d["Kelas"],
-                        "Asli Keseluruhan": f"{detail_fokus.get('Asli Keseluruhan', 0.0):.1f}",
-                        "Asli Syarat Utama": f"{detail_fokus.get('Asli Syarat Utama', 0.0):.1f}",
-                        "Kecocokan Syarat Utama (NCF)": f"{detail_fokus.get('NCF', 0.0):.2f}",
-                        "Kecocokan Divisi": f"{detail_fokus.get('Kecocokan Divisi', 0.0):.2f}%",
+                        "Nilai Tes Keseluruhan (Max 100)": f"{detail_fokus.get('Asli Keseluruhan', 0.0):.1f}",
+                        "Nilai Tes Khusus Divisi Ini (Max 100)": f"{detail_fokus.get('Asli Syarat Utama', 0.0):.1f}",
+                        "Kelayakan Karakter (Max 5.0)": f"{detail_fokus.get('NCF', 0.0):.2f}",
+                        "Persentase Kecocokan (Max 100%)": f"{detail_fokus.get('Kecocokan Divisi', 0.0):.2f}%",
                         "Fokus Divisi": filter_aktif,
                         "Rekomendasi Utama": d["Rekomendasi"],
                     }
@@ -1572,7 +1572,7 @@ def halaman_hasil_spk():
                         filter_aktif = st.session_state['filter_divisi']
                         
                         if filter_aktif == "Semua Divisi":
-                            headers = ["Rank", "Nama Siswa", "Kls", "Asli Total", "NCF", "Kecocokan", "Rekomendasi"]
+                            headers = ["Rank", "Nama Siswa", "Kelas", "Tes Umum(100)", "Kelayakan(5)", "Kecocokan(%)", "Rekomendasi"]
                             widths  = [10, 42, 10, 20, 18, 22, 68]
 
                             pdf.set_font("Arial", 'B', 9)
@@ -1596,7 +1596,7 @@ def halaman_hasil_spk():
                                 pdf.ln()
 
                         else:
-                            headers = ["Rank", "Nama Siswa", "Kls", "Asli Total", "Asli Utama", "NCF", "Cocok", "Fokus Divisi"]
+                            headers = ["Rank", "Nama Siswa", "Kelas", "Tes Umum(100)", "Tes Khusus(100)", "Kelayakan(5)", "Cocok(%)", "Fokus Divisi"]
                             widths  = [10, 36, 9, 16, 18, 18, 18, 65]
 
                             pdf.set_font("Arial", 'B', 9)
@@ -1749,10 +1749,9 @@ def halaman_hasil_spk():
                     <div style="background:#0a1e18;border:1px solid #12241f;border-radius:10px;padding:14px 16px;margin-top:10px;">
                         <div style="font-size:13px;font-weight:600;color:#10b981;margin-bottom:6px;">ℹ️ Penjelasan Singkat Perhitungan</div>
                         <div style="font-size:12px;color:#94a3b8;line-height:1.7;">
-                            <strong>Selisih Nilai</strong> menunjukkan perbedaan antara nilai siswa dan kebutuhan tiap divisi.<br>
-                            <strong>Nilai Kekuatan Utama (NCF)</strong> adalah rata-rata aspek yang paling penting pada divisi.<br>
-                            <strong>Nilai Pendukung (NSF)</strong> adalah rata-rata aspek pendukung tambahan.<br>
-                            <strong>Skor Rekomendasi</strong> dihitung dari gabungan NCF 60% dan NSF 40%.
+                            <strong>Selisih Nilai</strong> menunjukkan perbedaan antara kemampuan siswa dengan standar ideal divisi.<br>
+                            <strong>Kelayakan Karakter</strong> melihat seberapa pas sifat dominan siswa dengan kriteria wajib divisi.<br>
+                            <strong>Persentase Kecocokan</strong> adalah total kecocokan akhir siswa untuk direkomendasikan masuk divisi tersebut.
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
@@ -1764,8 +1763,8 @@ def halaman_hasil_spk():
                         st.dataframe(df_gap.style.map(color_gap, subset=kriteria_list), hide_index=True, use_container_width=True)
                         df_hasil = pd.DataFrame(hasil_perh).sort_values("Skor Akhir", ascending=False).reset_index(drop=True)
                         df_hasil = df_hasil.rename(columns={
-                            'NCF': 'Nilai Kekuatan Utama (NCF)',
-                            'NSF': 'Nilai Pendukung (NSF)',
+                            'NCF': 'Nilai Kekuatan Utama',
+                            'NSF': 'Nilai Pendukung',
                             'Skor Akhir': 'Skor Rekomendasi'
                         })
                         st.markdown("### 2. Hasil Nilai Utama, Pendukung, dan Skor Rekomendasi")
