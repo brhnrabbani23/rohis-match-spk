@@ -1585,9 +1585,9 @@ def halaman_hasil_spk():
                                 pdf.cell(widths[0], 8, str(row['Rank']), 1, 0, 'C')
                                 pdf.cell(widths[1], 8, str(row['Nama Siswa'])[:22], 1, 0, 'L')
                                 pdf.cell(widths[2], 8, str(row['Kelas']), 1, 0, 'C')
-                                pdf.cell(widths[3], 8, str(row['Asli Keseluruhan']), 1, 0, 'C')
-                                pdf.cell(widths[4], 8, str(row['Kecocokan Syarat Utama (NCF)']), 1, 0, 'C')
-                                pdf.cell(widths[5], 8, str(row['Kecocokan Divisi']), 1, 0, 'C')
+                                pdf.cell(widths[3], 8, str(row['Nilai Tes Keseluruhan (Max 100)']), 1, 0, 'C')
+                                pdf.cell(widths[4], 8, str(row['Kelayakan Karakter (Max 5.0)']), 1, 0, 'C')
+                                pdf.cell(widths[5], 8, str(row['Persentase Kecocokan (Max 100%)']), 1, 0, 'C')
 
                                 rek = str(row['Rekomendasi'])
                                 if len(rek) > 40:
@@ -1609,10 +1609,10 @@ def halaman_hasil_spk():
                                 pdf.cell(widths[0], 8, str(row['Rank']), 1, 0, 'C')
                                 pdf.cell(widths[1], 8, str(row['Nama Siswa'])[:20], 1, 0, 'L')
                                 pdf.cell(widths[2], 8, str(row['Kelas']), 1, 0, 'C')
-                                pdf.cell(widths[3], 8, str(row['Asli Keseluruhan']), 1, 0, 'C')
-                                pdf.cell(widths[4], 8, str(row['Asli Syarat Utama']), 1, 0, 'C')
-                                pdf.cell(widths[5], 8, str(row['Kecocokan Syarat Utama (NCF)']), 1, 0, 'C')
-                                pdf.cell(widths[6], 8, str(row['Kecocokan Divisi']), 1, 0, 'C')
+                                pdf.cell(widths[3], 8, str(row['Nilai Tes Keseluruhan (Max 100)']), 1, 0, 'C')
+                                pdf.cell(widths[4], 8, str(row['Nilai Tes Khusus Divisi Ini (Max 100)']), 1, 0, 'C')
+                                pdf.cell(widths[5], 8, str(row['Kelayakan Karakter (Max 5.0)']), 1, 0, 'C')
+                                pdf.cell(widths[6], 8, str(row['Persentase Kecocokan (Max 100%)']), 1, 0, 'C')
 
                                 fokus = str(row['Fokus Divisi'])
                                 if len(fokus) > 38:
@@ -1620,7 +1620,6 @@ def halaman_hasil_spk():
                                 pdf.cell(widths[7], 8, fokus, 1, 0, 'L')
                                 pdf.ln()
                        
-
                         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                             pdf.output(tmp.name)
                             with open(tmp.name, "rb") as f:
