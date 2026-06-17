@@ -887,15 +887,19 @@ def halaman_dashboard():
             </div>
         """, unsafe_allow_html=True)
 
+        # Kueri baru: Menghitung rata-rata mentah (1-100) dari nilai aktual siswa
         cursor.execute("""
             SELECT s.nama_siswa, s.kelas,
-                   GROUP_CONCAT(d.nama_divisi SEPARATOR ' / ') as nama_divisi,
-                   h.skor_akhir
-            FROM hasil_ranking h
-            JOIN siswa s ON h.kd_siswa = s.kd_siswa
-            JOIN divisi d ON h.id_divisi = d.id_divisi
-            GROUP BY s.kd_siswa, s.nama_siswa, s.kelas, h.skor_akhir
-            ORDER BY h.skor_akhir DESC
+                   (SELECT GROUP_CONCAT(d.nama_divisi SEPARATOR ' / ') 
+                    FROM hasil_ranking h 
+                    JOIN divisi d ON h.id_divisi = d.id_divisi 
+                    WHERE h.kd_siswa = s.kd_siswa) as nama_divisi,
+                   (SUM(n.nilai_aktual) / 25.0) * 100 as rata_rata_100
+            FROM siswa s
+            JOIN nilai_siswa n ON s.kd_siswa = n.kd_siswa
+            WHERE s.kd_siswa IN (SELECT kd_siswa FROM hasil_ranking)
+            GROUP BY s.kd_siswa, s.nama_siswa, s.kelas
+            ORDER BY rata_rata_100 DESC
             LIMIT 5
         """)
         top_list = cursor.fetchall()
@@ -904,8 +908,9 @@ def halaman_dashboard():
         if top_list:
             for i, siswa in enumerate(top_list):
                 inisial = "".join([n[0].upper() for n in siswa['nama_siswa'].split()[:2]])
-                skor_pct = (float(siswa['skor_akhir']) / 5.0) * 100
-                divisi = siswa['nama_divisi'].split(" / ")[0]
+                # Menggunakan skor rata-rata mentah murni skala 100
+                skor_pct = float(siswa['rata_rata_100'])
+                divisi = siswa['nama_divisi'].split(" / ")[0] if siswa['nama_divisi'] else "Belum Ditentukan"
                 border_color = "#eab308" if i == 0 else "#1b382e"
                 text_color = "#eab308" if i == 0 else "#10b981"
                 st.markdown(f"""
@@ -1305,28 +1310,39 @@ def halaman_hasil_spk():
             marks = cursor.fetchall()
 
             ncf_nilai = 0.0
-            rata_rata_asli = 0.0  # <--- VARIABEL BARU
+            rata_rata_asli_100 = 0.0
+            nilai_murni_core_100 = 0.0
+            
             if div_name in TARGET_DIVISI and marks:
                 na = {f"K{m['id_kriteria']}": m['nilai_aktual'] for m in marks}
-                
-                # HITUNG RATA-RATA MENTAH SEBELUM KENA PENALTI
-                if len(na) > 0:
-                    rata_rata_asli = sum(na.values()) / len(na)
-                    
                 if len(na) == 5:
+                    # 1. Hitung Nilai Asli Keseluruhan (Skala 100)
+                    rata_rata_asli_100 = (sum(na.values()) / 25.0) * 100
+                    
                     ncf_t, ncf_c = 0, 0
+                    core_raw_sum = 0
+                    core_count = 0
+                    
                     for k in ["K1","K2","K3","K4","K5"]:
                         t = TARGET_DIVISI[div_name][k]
-                        gap = na[k] - t
-                        if t >= 4:
+                        aktual = na[k]
+                        gap = aktual - t
+                        
+                        if t >= 4: # Hanya hitung Kriteria Utama (Core Factor)
                             ncf_t += bobot_gap(gap)
                             ncf_c += 1
+                            core_raw_sum += aktual
+                            core_count += 1
+                            
                     ncf_nilai = ncf_t / ncf_c if ncf_c > 0 else 0.0
+                    # 2. Hitung Nilai Asli Syarat Utama saja (Skala 100) tanpa pinalti gap
+                    nilai_murni_core_100 = (core_raw_sum / (core_count * 5.0)) * 100 if core_count > 0 else 0.0
 
             data.append({
                 "Nama Siswa": row['nama_siswa'],
                 "Kelas": row['kelas'],
-                "Rata-rata Mentah": rata_rata_asli,  # <--- MASUKKAN KE TABEL
+                "Asli Keseluruhan": rata_rata_asli_100,
+                "Asli Syarat Utama": nilai_murni_core_100,
                 "NCF": ncf_nilai,
                 "Skor (%)": persen,
                 "Rekomendasi": row['nama_divisi'],
@@ -1421,10 +1437,11 @@ def halaman_hasil_spk():
                     "Rank": idx + 1,
                     "Nama Siswa": d['Nama Siswa'],
                     "Kelas": d['Kelas'],
-                    "Rata-rata Mentah": f"{d['Rata-rata Mentah']:.2f}",  # <--- KOLOM BARU MUNCUL DI WEB
-                    "Nilai Kekuatan Utama": f"{d['NCF']:.2f}",
-                    "Tingkat Kecocokan": f"{d['Skor (%)']:.2f}%",
-                    "Rekomendasi Divisi": d['Rekomendasi'],
+                    "Asli Keseluruhan": f"{d['Asli Keseluruhan']:.1f}",
+                    "Asli Syarat Utama": f"{d['Asli Syarat Utama']:.1f}",
+                    "Kekuatan Utama (NCF)": f"{d['NCF']:.2f}",
+                    "Kecocokan Divisi": f"{d['Skor (%)']:.2f}%",
+                    "Rekomendasi": d['Rekomendasi'],
                 })
 
             if klasemen:
@@ -1462,8 +1479,8 @@ def halaman_hasil_spk():
                         pdf = PDF()
                         pdf.add_page()
                         # Tambah Header Rata2 dan atur ulang lebar tabel PDF agar muat di kertas A4
-                        headers = ["Rank", "Nama Siswa", "Kls", "Rata2", "N.Utama", "Kecocokan", "Rekomendasi Divisi"]
-                        widths  = [10, 40, 10, 15, 18, 22, 75]
+                        headers = ["Rank", "Nama Siswa", "Kls", "Asli Total", "Asli Utama", "Kekuatan(NCF)", "Kecocokan", "Divisi"]
+                        widths  = [10, 36, 9, 16, 17, 21, 18, 63]
                         pdf.set_font("Arial",'B',9)
                         for h, w in zip(headers, widths):
                             pdf.cell(w, 10, h, 1, 0, 'C')
@@ -1473,12 +1490,13 @@ def halaman_hasil_spk():
                             pdf.cell(widths[0], 8, str(row['Rank']), 1, 0, 'C')
                             pdf.cell(widths[1], 8, str(row['Nama Siswa'])[:20], 1, 0, 'L')
                             pdf.cell(widths[2], 8, str(row['Kelas']), 1, 0, 'C')
-                            pdf.cell(widths[3], 8, str(row['Rata-rata Mentah']), 1, 0, 'C')
-                            pdf.cell(widths[4], 8, str(row['Nilai Kekuatan Utama']), 1, 0, 'C')
-                            pdf.cell(widths[5], 8, str(row['Tingkat Kecocokan']), 1, 0, 'C')
-                            rek = str(row['Rekomendasi Divisi'])
-                            if len(rek) > 40: rek = rek[:37] + "..."
-                            pdf.cell(widths[6], 8, rek, 1, 0, 'L')
+                            pdf.cell(widths[3], 8, str(row['Asli Keseluruhan']), 1, 0, 'C')
+                            pdf.cell(widths[4], 8, str(row['Asli Syarat Utama']), 1, 0, 'C')
+                            pdf.cell(widths[5], 8, str(row['Kekuatan Utama (NCF)']), 1, 0, 'C')
+                            pdf.cell(widths[6], 8, str(row['Kecocokan Divisi']), 1, 0, 'C')
+                            rek = str(row['Rekomendasi'])
+                            if len(rek) > 35: rek = rek[:32] + "..."
+                            pdf.cell(widths[7], 8, rek, 1, 0, 'L')
                             pdf.ln()
 
                         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
