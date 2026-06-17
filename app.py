@@ -7,7 +7,7 @@
 # =========================================================
 
 import streamlit as st
-import mysql.connector
+import mysql.connectorF
 import pandas as pd
 import time
 import datetime
@@ -1504,23 +1504,16 @@ def halaman_hasil_spk():
             }
             df_target = pd.DataFrame(DATA_TARGET)
 
-            # Tambahkan ORDER BY nama_siswa ASC agar namanya urut dari A ke Z
-            cursor.execute("SELECT kd_siswa, nama_siswa FROM siswa ORDER BY nama_siswa ASC")
+            cursor.execute("SELECT kd_siswa, nama_siswa FROM siswa")
             data_siswa = cursor.fetchall()
 
             if not data_siswa:
                 st.warning("Belum ada data siswa di database.")
             else:
-                # Buat dictionary pemetaan ID ke Nama Siswa
-                map_siswa = {s['kd_siswa']: s['nama_siswa'] for s in data_siswa}
+                opsi = [f"{s['kd_siswa']} - {s['nama_siswa']}" for s in data_siswa]
+                pilih = st.selectbox("Pilih siswa untuk melihat proses rekomendasinya:", opsi)
+                kd_siswa = int(pilih.split(" - ")[0])
                 
-                # Gunakan format_func untuk menyembunyikan ID dari pandangan user
-                kd_siswa = st.selectbox(
-                    "Pilih siswa untuk melihat proses rekomendasinya:", 
-                    options=list(map_siswa.keys()),
-                    format_func=lambda x: map_siswa[x]
-                )
-
                 cursor.execute(
                     "SELECT id_kriteria, nilai_aktual FROM nilai_siswa WHERE kd_siswa = %s ORDER BY id_kriteria ASC",
                     (kd_siswa,)
