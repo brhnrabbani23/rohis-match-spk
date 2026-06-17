@@ -1487,7 +1487,10 @@ def halaman_hasil_spk():
                     reverse=True
                 )
             else:
-                data_fil = data_mentah.copy()
+                # JURUS SULAP: Filter dulu siswanya, buang yang rekomendasinya nggak cocok!
+                data_fil = [d for d in data_mentah if filter_aktif in d['Rekomendasi']]
+                
+                # Setelah difilter, baru di-sort (urutkan) berdasarkan nilai tertingginya
                 data_fil.sort(
                     key=lambda x: (
                         x["Detail Divisi"].get(filter_aktif, {}).get("Asli Syarat Utama", 0.0),
