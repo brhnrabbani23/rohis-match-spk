@@ -1305,8 +1305,14 @@ def halaman_hasil_spk():
             marks = cursor.fetchall()
 
             ncf_nilai = 0.0
+            rata_rata_asli = 0.0  # <--- VARIABEL BARU
             if div_name in TARGET_DIVISI and marks:
                 na = {f"K{m['id_kriteria']}": m['nilai_aktual'] for m in marks}
+                
+                # HITUNG RATA-RATA MENTAH SEBELUM KENA PENALTI
+                if len(na) > 0:
+                    rata_rata_asli = sum(na.values()) / len(na)
+                    
                 if len(na) == 5:
                     ncf_t, ncf_c = 0, 0
                     for k in ["K1","K2","K3","K4","K5"]:
@@ -1320,10 +1326,12 @@ def halaman_hasil_spk():
             data.append({
                 "Nama Siswa": row['nama_siswa'],
                 "Kelas": row['kelas'],
+                "Rata-rata Mentah": rata_rata_asli,  # <--- MASUKKAN KE TABEL
                 "NCF": ncf_nilai,
                 "Skor (%)": persen,
                 "Rekomendasi": row['nama_divisi'],
             })
+            
         data.sort(key=lambda x: (x['NCF'], x['Skor (%)']), reverse=True)
         return data
 
@@ -1413,6 +1421,7 @@ def halaman_hasil_spk():
                     "Rank": idx + 1,
                     "Nama Siswa": d['Nama Siswa'],
                     "Kelas": d['Kelas'],
+                    "Rata-rata Mentah": f"{d['Rata-rata Mentah']:.2f}",  # <--- KOLOM BARU MUNCUL DI WEB
                     "Nilai Kekuatan Utama": f"{d['NCF']:.2f}",
                     "Tingkat Kecocokan": f"{d['Skor (%)']:.2f}%",
                     "Rekomendasi Divisi": d['Rekomendasi'],
@@ -1452,8 +1461,9 @@ def halaman_hasil_spk():
 
                         pdf = PDF()
                         pdf.add_page()
-                        headers = ["Rank","Nama Siswa","Kelas","Nilai Utama","Tk. Kecocokan","Rekomendasi Divisi"]
-                        widths  = [12, 45, 12, 18, 25, 78]
+                        # Tambah Header Rata2 dan atur ulang lebar tabel PDF agar muat di kertas A4
+                        headers = ["Rank", "Nama Siswa", "Kls", "Rata2", "N.Utama", "Kecocokan", "Rekomendasi Divisi"]
+                        widths  = [10, 40, 10, 15, 18, 22, 75]
                         pdf.set_font("Arial",'B',9)
                         for h, w in zip(headers, widths):
                             pdf.cell(w, 10, h, 1, 0, 'C')
@@ -1461,13 +1471,14 @@ def halaman_hasil_spk():
                         pdf.set_font("Arial", size=8)
                         for _, row in df_klas.iterrows():
                             pdf.cell(widths[0], 8, str(row['Rank']), 1, 0, 'C')
-                            pdf.cell(widths[1], 8, str(row['Nama Siswa'])[:22], 1, 0, 'L')
+                            pdf.cell(widths[1], 8, str(row['Nama Siswa'])[:20], 1, 0, 'L')
                             pdf.cell(widths[2], 8, str(row['Kelas']), 1, 0, 'C')
-                            pdf.cell(widths[3], 8, str(row['Nilai Kekuatan Utama']), 1, 0, 'C')
-                            pdf.cell(widths[4], 8, str(row['Tingkat Kecocokan']), 1, 0, 'C')
+                            pdf.cell(widths[3], 8, str(row['Rata-rata Mentah']), 1, 0, 'C')
+                            pdf.cell(widths[4], 8, str(row['Nilai Kekuatan Utama']), 1, 0, 'C')
+                            pdf.cell(widths[5], 8, str(row['Tingkat Kecocokan']), 1, 0, 'C')
                             rek = str(row['Rekomendasi Divisi'])
-                            if len(rek) > 45: rek = rek[:42] + "..."
-                            pdf.cell(widths[5], 8, rek, 1, 0, 'L')
+                            if len(rek) > 40: rek = rek[:37] + "..."
+                            pdf.cell(widths[6], 8, rek, 1, 0, 'L')
                             pdf.ln()
 
                         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
