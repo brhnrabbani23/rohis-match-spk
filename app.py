@@ -1,11 +1,3 @@
-# =========================================================
-# ROHIS-MATCH FINAL REDESIGN
-# Catatan:
-# - File ini melanjutkan redesign tampilan dari draft Claude.
-# - Logic utama database, login, input penilaian, dan Profile Matching tetap dipertahankan.
-# - Fokus perubahan: UI/UX, sidebar, topbar, card, dashboard, tabel, dan tampilan ranking.
-# =========================================================
-
 import streamlit as st
 import mysql.connector
 import pandas as pd
@@ -1028,9 +1020,16 @@ def halaman_data_siswa():
 
     with tab_edit:
         if not df_siswa.empty:
-            opsi = df_siswa['ID Siswa'].astype(str) + " - " + df_siswa['Nama Lengkap']
-            pilih = st.selectbox("Pilih Anggota yang akan diedit:", opsi)
-            kd = pilih.split(" - ")[0]
+            # Bikin kamus rahasia (ID -> Nama)
+            map_siswa = dict(zip(df_siswa['ID Siswa'], df_siswa['Nama Lengkap']))
+            
+            # Jurus format_func biar ID gaib
+            kd = st.selectbox(
+                "Pilih Anggota yang akan diedit:", 
+                options=list(map_siswa.keys()),
+                format_func=lambda x: map_siswa[x]
+            )
+            
             cursor.execute("SELECT * FROM siswa WHERE kd_siswa = %s", (kd,))
             lama = cursor.fetchone()
             with st.form("form_edit_siswa"):
@@ -1055,10 +1054,18 @@ def halaman_data_siswa():
 
     with tab_hapus:
         if not df_siswa.empty:
-            opsi = df_siswa['ID Siswa'].astype(str) + " - " + df_siswa['Nama Lengkap']
-            pilih = st.selectbox("Pilih Anggota yang akan dihapus:", opsi)
-            kd = pilih.split(" - ")[0]
-            nama_hapus = pilih.split(" - ")[1]
+            # Bikin kamus rahasia (ID -> Nama)
+            map_siswa = dict(zip(df_siswa['ID Siswa'], df_siswa['Nama Lengkap']))
+            
+            # Jurus format_func biar ID gaib
+            kd = st.selectbox(
+                "Pilih Anggota yang akan dihapus:", 
+                options=list(map_siswa.keys()),
+                format_func=lambda x: map_siswa[x]
+            )
+            
+            nama_hapus = map_siswa[kd] # Ambil nama langsung dari kamus
+            
             st.markdown(f"""
             <div style="background:#180a0a;border:1px solid #3b1515;border-left:4px solid #ef4444;
                         border-radius:8px;padding:12px 16px;margin-bottom:12px;">
