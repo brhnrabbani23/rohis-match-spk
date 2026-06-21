@@ -1018,13 +1018,10 @@ def halaman_dashboard():
 
     render_divider_arabic()
 
-    col_chart, col_rank = st.columns([2, 1])
+    col_chart, col_rank = st.columns([2, 1], gap="medium")
 
     with col_chart:
-        st.markdown("""
-        <div class="rm-dashboard-panel">
-            <div class="rm-dashboard-title">📈 Sebaran Anggota per Divisi</div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div class="rm-section-title">📈 Sebaran Anggota per Divisi</div>', unsafe_allow_html=True)
 
         cursor.execute("""
             SELECT d.nama_divisi, COUNT(h.id_ranking) as jumlah
@@ -1033,38 +1030,57 @@ def halaman_dashboard():
             GROUP BY d.id_divisi
         """)
         data_sebaran = cursor.fetchall()
-        
+
         if data_sebaran:
             df_sebaran = pd.DataFrame(data_sebaran)
             df_sebaran = df_sebaran.rename(columns={'nama_divisi': 'Divisi', 'jumlah': 'Jumlah Siswa'})
-            
-            # Modern UI: Vertical Bar Chart dengan ujung atas melengkung (Rounded Pill)
+
             chart = alt.Chart(df_sebaran).mark_bar(
                 color='#2563EB',
                 cornerRadiusTopLeft=8,
                 cornerRadiusTopRight=8,
-                size=38  # Ketebalan bar biar terlihat padat dan modern
+                size=38
             ).encode(
-                x=alt.X('Divisi:N', sort='-y', axis=alt.Axis(labelAngle=-40, title=None, labelColor='#1E293B', labelFontSize=11)),
-                y=alt.Y('Jumlah Siswa:Q', axis=alt.Axis(grid=True, gridColor='#93C5FD', title=None, labelColor='#1E293B', tickMinStep=1)),
-                tooltip=[alt.Tooltip('Divisi:N', title='Nama Divisi'), alt.Tooltip('Jumlah Siswa:Q', title='Total Anggota')]
+                x=alt.X(
+                    'Divisi:N',
+                    sort='-y',
+                    axis=alt.Axis(
+                        labelAngle=-40,
+                        title=None,
+                        labelColor='#0F2F74',
+                        labelFontSize=11,
+                        labelLimit=120
+                    )
+                ),
+                y=alt.Y(
+                    'Jumlah Siswa:Q',
+                    axis=alt.Axis(
+                        grid=True,
+                        gridColor='#BFDBFE',
+                        title=None,
+                        labelColor='#0F2F74',
+                        tickMinStep=1
+                    )
+                ),
+                tooltip=[
+                    alt.Tooltip('Divisi:N', title='Nama Divisi'),
+                    alt.Tooltip('Jumlah Siswa:Q', title='Total Anggota')
+                ]
             ).properties(
-                height=320
+                height=340,
+                background='#EAF3FF'
             ).configure_view(
-                strokeWidth=0 # Menghilangkan garis tepi luar kotak chart agar menyatu dengan background
+                strokeWidth=0
+            ).configure_axis(
+                domainColor='#93C5FD',
+                tickColor='#93C5FD'
             )
-            
+
             st.altair_chart(chart, use_container_width=True)
         else:
             st.info("Belum ada data penempatan divisi.")
 
     with col_rank:
-        st.markdown("""
-        <div class="rm-dashboard-panel">
-            <div class="rm-dashboard-title">🏆 Top 5 Anggota dengan Nilai Keseluruhan Terbaik</div>
-        """, unsafe_allow_html=True)
-
-        # Kueri baru: Menghitung rata-rata mentah (1-100) dari nilai aktual siswa
         cursor.execute("""
             SELECT s.nama_siswa, s.kelas,
                    COALESCE((
@@ -1085,35 +1101,54 @@ def halaman_dashboard():
         top_list = cursor.fetchall()
 
         medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+
+        top_html = """
+        <div class="rm-top-panel">
+            <div class="rm-top-title">🏆 Top 5 Anggota dengan Nilai Keseluruhan Terbaik</div>
+        """
+
         if top_list:
             for i, siswa in enumerate(top_list):
                 inisial = "".join([n[0].upper() for n in siswa['nama_siswa'].split()[:2]])
-                # Menggunakan skor rata-rata mentah murni skala 100
                 skor_pct = float(siswa['rata_rata_100'])
                 divisi = siswa['nama_divisi'].split(" / ")[0] if siswa['nama_divisi'] else "Belum Ditentukan"
                 border_color = "#D97706" if i == 0 else "#93C5FD"
                 text_color = "#D97706" if i == 0 else "#2563EB"
-                item_class = "rm-top-member-item first" if i == 0 else "rm-top-member-item"
-                st.markdown(f"""
+                item_class = "rm-top-item first" if i == 0 else "rm-top-item"
+
+                top_html += f"""
                 <div class="{item_class}" style="border-color:{border_color};">
-                    <span style="font-size:14px;width:20px;">{medals[i]}</span>
+                    <span style="font-size:14px;width:20px;flex-shrink:0;">{medals[i]}</span>
                     <div style="
-                        width:28px;height:28px;border-radius:50%;
+                        width:30px;height:30px;border-radius:50%;
                         background:#DBEAFE;border:1.5px solid {border_color};
                         display:flex;align-items:center;justify-content:center;
-                        font-size:10px;color:{text_color};font-weight:600;flex-shrink:0;
+                        font-size:10px;color:{text_color};font-weight:800;flex-shrink:0;
                     ">{inisial}</div>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-size:11px;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{siswa['nama_siswa']}</div>
-                        <div style="font-size:10px;color:#64748B;">{divisi}</div>
+                        <div style="font-size:11px;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;">{siswa['nama_siswa']}</div>
+                        <div style="font-size:10px;color:#64748B;margin-top:2px;">{divisi}</div>
                     </div>
-                    <div style="font-size:12px;font-weight:700;color:{text_color};">{skor_pct:.1f}/100</div>
+                    <div style="font-size:12px;font-weight:900;color:{text_color};white-space:nowrap;">{skor_pct:.1f}/100</div>
                 </div>
-                """, unsafe_allow_html=True)
+                """
         else:
-            st.info("Belum ada data ranking.")
+            top_html += """
+            <div style="
+                background:#EFF6FF;
+                border:1px dashed #93C5FD;
+                border-radius:13px;
+                padding:16px;
+                color:#64748B;
+                font-size:12px;
+                line-height:1.6;
+            ">
+                Belum ada data ranking yang dapat ditampilkan.
+            </div>
+            """
 
-        st.markdown("</div>", unsafe_allow_html=True)
+        top_html += "</div>"
+        st.markdown(top_html, unsafe_allow_html=True)
 
     # Log aktivitas terbaru (hanya jika login)
     if st.session_state['logged_in']:
@@ -2235,69 +2270,80 @@ st.markdown("""
 
 
 # ---------------------------------------------------------
-# FINAL UI PATCH V5: dashboard chart + top 5 equal card layout
+# FINAL UI PATCH V6: clean dashboard chart and top-5 panel
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* Chart dashboard dirapikan agar tidak terlihat keluar dari card */
-    .rm-dashboard-panel {
+    .rm-section-title {
         background: rgba(255,255,255,0.88);
         border: 1px solid #B7D3FF;
         border-radius: 16px;
-        box-shadow: 0 12px 28px rgba(30,64,175,0.10);
-        padding: 16px;
-        min-height: 455px;
-        overflow: hidden;
+        padding: 15px 16px;
+        margin-bottom: 10px;
+        box-shadow: 0 10px 24px rgba(30,64,175,0.08);
+        font-size: 13px;
+        font-weight: 800;
+        color: #0F2F74;
     }
 
-    .rm-dashboard-title {
-        display:flex;
-        align-items:center;
-        gap:8px;
-        font-size:13px;
-        font-weight:800;
-        color:#0F2F74;
-        margin-bottom:14px;
-        padding-bottom:12px;
-        border-bottom:1px solid rgba(147,197,253,0.65);
+    /* Chart langsung dijadikan card, bukan dibungkus div kosong */
+    [data-testid="stVegaLiteChart"] {
+        background: rgba(255,255,255,0.88) !important;
+        border: 1px solid #B7D3FF !important;
+        border-radius: 16px !important;
+        padding: 16px 16px 8px 16px !important;
+        box-shadow: 0 12px 28px rgba(30,64,175,0.10) !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
     }
 
-    .rm-chart-shell {
-        background: #EAF3FF;
-        border: 1px solid #B7D3FF;
-        border-radius: 14px;
-        padding: 12px 12px 4px 12px;
-        overflow: hidden;
-    }
-
-    .rm-chart-shell [data-testid="stVegaLiteChart"] {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
+    [data-testid="stVegaLiteChart"] > div {
         border-radius: 12px !important;
+        overflow: hidden !important;
     }
 
-    .rm-top-member-item {
-        display:flex;
-        align-items:center;
-        gap:10px;
-        background:rgba(239,246,255,0.94);
-        border-radius:12px;
-        padding:10px 12px;
-        margin-bottom:9px;
-        border:1px solid #93C5FD;
-        min-height:54px;
-        box-sizing:border-box;
+    .rm-top-panel {
+        background: rgba(255,255,255,0.88);
+        border: 1px solid #B7D3FF;
+        border-radius: 16px;
+        padding: 15px 16px;
+        box-shadow: 0 12px 28px rgba(30,64,175,0.10);
+        min-height: 438px;
+        box-sizing: border-box;
     }
 
-    .rm-top-member-item.first {
-        border-color:#F59E0B;
-        background:rgba(255,247,237,0.88);
+    .rm-top-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 800;
+        color: #0F2F74;
+        padding-bottom: 13px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid rgba(147,197,253,0.72);
     }
 
-    .rm-top-member-item:last-child {
-        margin-bottom:0;
+    .rm-top-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(239,246,255,0.92);
+        border: 1px solid #93C5FD;
+        border-radius: 13px;
+        padding: 10px 12px;
+        margin-bottom: 9px;
+        min-height: 56px;
+        box-sizing: border-box;
+    }
+
+    .rm-top-item.first {
+        background: rgba(255,247,237,0.92);
+        border-color: #F59E0B;
+    }
+
+    .rm-top-item:last-child {
+        margin-bottom: 0;
     }
 </style>
 """, unsafe_allow_html=True)
