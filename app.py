@@ -720,31 +720,35 @@ def render_topbar(menu_name: str):
     role = (st.session_state.get('role') or 'PUBLIK').upper()
     username = st.session_state.get('username') or 'Tamu'
     role_color = "#2563EB" if role == "PEMBINA" else "#D97706"
+    tahun_ajaran = get_tahun_ajaran()
 
     st.markdown(f"""
     <div style="
-        background:#F7FBFF;
-        border-bottom:1px solid #BFDBFE;
-        padding:12px 0px 12px 4px;
+        background:rgba(255,255,255,0.88);
+        border:1px solid #BFDBFE;
+        border-left:4px solid #2563EB;
+        border-radius:16px;
+        padding:13px 16px;
         display:flex;
         align-items:center;
         justify-content:space-between;
-        margin-bottom:16px;
+        margin-bottom:18px;
+        box-shadow:0 10px 28px rgba(30,64,175,0.09);
+        backdrop-filter: blur(8px);
     ">
-        <div style="display:flex;align-items:center;gap:8px;">
-            <div style="width:3px;height:22px;background:#2563EB;border-radius:2px;"></div>
-            <span style="font-size:16px;font-weight:600;color:#102A43;">{menu_name}</span>
-            <span style="font-size:12px;color:#60A5FA;">· Tahun Ajaran 2026/2027</span>
+        <div style="display:flex;align-items:center;gap:9px;">
+            <span style="font-size:16px;font-weight:800;color:#0F2F74;">{menu_name}</span>
+            <span style="font-size:12px;color:#3B82F6;">· Tahun Ajaran {tahun_ajaran}</span>
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
             <div style="
                 font-size:11px;
-                background:{role_color}18;
+                background:{role_color}14;
                 color:{role_color};
-                border:1px solid {role_color}40;
-                border-radius:20px;
-                padding:4px 12px;
-                font-weight:500;
+                border:1px solid {role_color}45;
+                border-radius:999px;
+                padding:5px 12px;
+                font-weight:800;
             ">🔐 {role} — {username}</div>
         </div>
     </div>
@@ -840,6 +844,18 @@ def catat_log(aksi):
     except Exception:
         pass
 
+
+
+def get_tahun_ajaran():
+    """Menghasilkan tahun ajaran otomatis berdasarkan tanggal saat aplikasi dibuka.
+    Logika umum Indonesia: tahun ajaran baru dimulai sekitar Juli.
+    Contoh:
+    - Januari 2026 -> 2025/2026
+    - Juli 2026 -> 2026/2027
+    """
+    today = datetime.date.today()
+    start_year = today.year if today.month >= 7 else today.year - 1
+    return f"{start_year}/{start_year + 1}"
 
 def proses_logout():
     catat_log("Keluar (logout) dari sistem")
@@ -1989,6 +2005,116 @@ def halaman_hasil_spk():
 
     else:
         render_tabel_klasemen()
+
+
+
+# ---------------------------------------------------------
+# FINAL UI PATCH V3: soft full background, button contrast, rounded topbar
+# ---------------------------------------------------------
+st.markdown("""
+<style>
+    /* 1. Background putih-kebiruan dibuat merata, bukan hanya kanan */
+    html, body, .stApp, [data-testid="stAppViewContainer"] {
+        background:
+            radial-gradient(circle at 18% 18%, rgba(96,165,250,0.22) 0%, rgba(96,165,250,0.10) 24%, transparent 46%),
+            radial-gradient(circle at 82% 10%, rgba(37,99,235,0.18) 0%, rgba(37,99,235,0.09) 28%, transparent 54%),
+            radial-gradient(circle at 50% 92%, rgba(147,197,253,0.24) 0%, rgba(147,197,253,0.10) 35%, transparent 62%),
+            linear-gradient(135deg, #E6F1FF 0%, #F2F8FF 36%, #EAF3FF 72%, #E2EEFF 100%) !important;
+        background-attachment: fixed !important;
+    }
+
+    .main .block-container {
+        background: transparent !important;
+    }
+
+    /* 2. Semua tombol biru / primary di konten harus putih tulisannya */
+    button[kind="primary"],
+    button[kind="primary"] *,
+    button[kind="primary"] p,
+    button[kind="primary"] div,
+    button[kind="primary"] span {
+        color: #FFFFFF !important;
+        fill: #FFFFFF !important;
+    }
+
+    /* 3. Tombol aktif di sidebar juga biru dengan teks putih */
+    section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, rgba(96,165,250,0.40), rgba(37,99,235,0.92)) !important;
+        color: #FFFFFF !important;
+        border: 1px solid rgba(255,255,255,0.45) !important;
+        border-left: 5px solid #F59E0B !important;
+        box-shadow: 0 12px 24px rgba(15,47,116,0.25) !important;
+    }
+
+    section[data-testid="stSidebar"] .stButton > button[kind="primary"] *,
+    section[data-testid="stSidebar"] .stButton > button[kind="primary"] p,
+    section[data-testid="stSidebar"] .stButton > button[kind="primary"] span {
+        color: #FFFFFF !important;
+        font-weight: 800 !important;
+    }
+
+    /* 4. Download button: PDF dan Excel jelas putih */
+    a[data-testid="stDownloadButton"] button,
+    a[data-testid="stDownloadButton"] button *,
+    a[data-testid="stDownloadButton"] button p,
+    a[data-testid="stDownloadButton"] button div,
+    a[data-testid="stDownloadButton"] button span {
+        color: #FFFFFF !important;
+        fill: #FFFFFF !important;
+    }
+
+    a[data-testid="stDownloadButton"] button {
+        background: linear-gradient(135deg, #2563EB, #1E40AF) !important;
+        border: 1px solid #1D4ED8 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 12px 26px rgba(37,99,235,0.22) !important;
+    }
+
+    /* 5. Tombol filter divisi aktif: teks putih */
+    div.stButton > button[kind="primary"],
+    div.stButton > button[kind="primary"] *,
+    div.stButton > button[kind="primary"] p,
+    div.stButton > button[kind="primary"] span {
+        color: #FFFFFF !important;
+    }
+
+    /* 6. Topbar Streamlit custom di function sudah rounded, ini jaga-jaga agar tidak tajam */
+    [data-testid="stHorizontalBlock"] > div:has(div[style*="Tahun Ajaran"]) {
+        border-radius: 16px !important;
+    }
+
+    /* 7. Card tetap lembut dan tidak terlalu putih polos */
+    [data-testid="stMetric"],
+    [data-testid="stForm"],
+    details,
+    [data-testid="stDataFrame"],
+    [data-testid="stVegaLiteChart"] {
+        background: rgba(255,255,255,0.82) !important;
+        border-color: #B7D3FF !important;
+    }
+
+    /* 8. Text di tombol sekunder tetap gelap karena background putih */
+    button[kind="secondary"],
+    button[kind="secondary"] *,
+    button[kind="secondary"] p,
+    button[kind="secondary"] span {
+        color: #102A43 !important;
+    }
+
+    section[data-testid="stSidebar"] button[kind="secondary"],
+    section[data-testid="stSidebar"] button[kind="secondary"] *,
+    section[data-testid="stSidebar"] button[kind="secondary"] p,
+    section[data-testid="stSidebar"] button[kind="secondary"] span {
+        color: #EAF3FF !important;
+    }
+
+    /* 9. Perbaikan kontras teks tombol di alert/area spesifik */
+    .stDownloadButton button:hover,
+    button[kind="primary"]:hover {
+        filter: brightness(0.96);
+    }
+</style>
+""", unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
