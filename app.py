@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import mysql.connector
 import pandas as pd
 import time
@@ -664,6 +665,7 @@ def render_sidebar_menu(menu_items, key_prefix="menu"):
             if st.session_state.get('menu_aktif') != item:
                 catat_log(f"Membuka halaman {item}")
             st.session_state['menu_aktif'] = item
+            st.session_state['_auto_close_sidebar'] = True
             st.rerun()
 
 
@@ -714,6 +716,39 @@ def render_sidebar_user_card(username, role_aktif):
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+def close_sidebar_on_mobile():
+    """Tutup sidebar otomatis SETELAH pengguna menekan menu navigasi, khusus di
+    layar sempit (HP/tablet). Ini bukan API resmi Streamlit untuk mengontrol
+    sidebar dari Python, jadi caranya 'meminjam' tombol collapse yang sudah ada
+    lewat sedikit JavaScript. Kalau suatu saat Streamlit mengganti struktur
+    HTML-nya, trik ini mungkin perlu disesuaikan lagi.
+    """
+    components.html(
+        """
+        <script>
+        (function() {
+            try {
+                var doc = window.parent.document;
+                var isMobile = window.parent.innerWidth < 768;
+                if (!isMobile) { return; }
+
+                var sidebar = doc.querySelector('section[data-testid="stSidebar"]');
+                var isOpen = !sidebar || sidebar.getAttribute('aria-expanded') !== 'false';
+                if (!isOpen) { return; }
+
+                var btn = doc.querySelector('[data-testid="stSidebarCollapseButton"] button')
+                    || doc.querySelector('[data-testid="stSidebarCollapsedControl"] button')
+                    || doc.querySelector('[data-testid="collapsedControl"] button')
+                    || doc.querySelector('[data-testid="collapsedControl"]');
+                if (btn) { btn.click(); }
+            } catch (e) { /* aman diabaikan, jangan sampai bikin app error */ }
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
 
 def render_topbar(menu_name: str):
     # Aman untuk halaman publik: saat belum login, role/username bernilai None.
@@ -793,7 +828,7 @@ def create_new_connection():
         port=int(st.secrets["DB_PORT"]),                                                                                                                                                                                                                                                         
         user=st.secrets["DB_USER"],                                                                                                                                                                                                                                                                                                                                                                                                                                              
         password=st.secrets["DB_PASS"],                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
-        database=st.secrets["DB_NAME"],                                                                                                                            
+        database=st.secrets["DB_NAME"],                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
         use_pure=True,                                                                                                                                   
         autocommit=True # Wajib agar data langsung tersimpan                                                                                                                             
     )                                                                                                                                                                                                                                                                
@@ -993,10 +1028,10 @@ def halaman_dashboard():
         render_page_header("🕌", greeting, sub)
     else:
         st.markdown("""
-        <div style="text-align:center;padding:20px 0 10px;">
-            <div style="font-size:40px;margin-bottom:8px;">🕌</div>
-            <h1 style="color:#2563EB;font-size:24px;font-weight:600;">ROHIS-MATCH</h1>
-            <p style="color:#64748B;font-size:13px;">Sistem Pendukung Keputusan Penempatan Divisi</p>
+        <div style="text-align:center;padding:4px 0 8px;">
+            <div style="font-size:36px;margin-bottom:6px;">🕌</div>
+            <h1 style="color:#2563EB;font-size:24px;font-weight:600;margin:0 0 4px;">ROHIS-MATCH</h1>
+            <p style="color:#64748B;font-size:13px;margin:0;">Sistem Pendukung Keputusan Penempatan Divisi</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1034,22 +1069,29 @@ def halaman_dashboard():
         if data_sebaran:
             df_sebaran = pd.DataFrame(data_sebaran)
             df_sebaran = df_sebaran.rename(columns={'nama_divisi': 'Divisi', 'jumlah': 'Jumlah Siswa'})
+            # Label sumbu dipersingkat (buang embel-embel "(Kesenian)") biar tidak numpuk
+            # di layar sempit/HP. Nama lengkap tetap muncul di tooltip saat disentuh/hover.
+            df_sebaran['Divisi Label'] = df_sebaran['Divisi'].str.replace(
+                r"\s*\(Kesenian\)", "", regex=True
+            )
 
             chart = alt.Chart(df_sebaran).mark_bar(
                 color='#2563EB',
                 cornerRadiusTopLeft=8,
                 cornerRadiusTopRight=8,
-                size=38
+                size=30
             ).encode(
                 x=alt.X(
-                    'Divisi:N',
-                    sort='-y',
+                    'Divisi Label:N',
+                    sort=alt.EncodingSortField(field='Jumlah Siswa', order='descending'),
                     axis=alt.Axis(
-                        labelAngle=-40,
+                        labelAngle=-60,
                         title=None,
                         labelColor='#0F2F74',
-                        labelFontSize=11,
-                        labelLimit=120
+                        labelFontSize=10,
+                        labelLimit=70,
+                        labelOverlap=False,
+                        labelPadding=4
                     )
                 ),
                 y=alt.Y(
@@ -1067,8 +1109,9 @@ def halaman_dashboard():
                     alt.Tooltip('Jumlah Siswa:Q', title='Total Anggota')
                 ]
             ).properties(
-                height=340,
-                background='#EAF3FF'
+                height=360,
+                background='#EAF3FF',
+                padding={'left': 4, 'right': 4, 'top': 8, 'bottom': 60}
             ).configure_view(
                 strokeWidth=0
             ).configure_axis(
@@ -2363,13 +2406,13 @@ st.markdown("""
     /* Mengurangi jarak kosong antara toolbar Streamlit dan konten aplikasi.
        Tidak mengubah layout, tabel, ranking, chart, atau desain utama. */
     .block-container {
-        padding-top: 0.65rem !important;
+        padding-top: 0.3rem !important;
         padding-bottom: 2rem !important;
     }
 
     /* Sidebar dibuat lebih rapat ke atas agar logo tidak terlalu jauh dari tombol buka/tutup sidebar. */
     section[data-testid="stSidebar"] > div:first-child {
-        padding-top: 0.15rem !important;
+        padding-top: 0.1rem !important;
     }
 
     div[data-testid="stSidebarUserContent"] {
@@ -2379,7 +2422,7 @@ st.markdown("""
     /* Khusus layar HP: lebih rapat lagi, tapi tetap aman dari toolbar browser/Streamlit. */
     @media (max-width: 768px) {
         .block-container {
-            padding-top: 0.35rem !important;
+            padding-top: 0.1rem !important;
             padding-left: 0.9rem !important;
             padding-right: 0.9rem !important;
         }
@@ -2406,6 +2449,7 @@ if not st.session_state['logged_in']:
             st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
             if st.button("🔐 Login Akses", type="primary", use_container_width=True, key="sidebar_login_access"):
                 st.session_state['menu_aktif'] = "Login Akses"
+                st.session_state['_auto_close_sidebar'] = True
                 st.rerun()
 
             st.divider()
@@ -2414,6 +2458,7 @@ if not st.session_state['logged_in']:
             st.markdown("<div style='padding:8px 4px 6px;font-size:10px;color:#DBEAFE;text-transform:uppercase;letter-spacing:1.8px;margin-top:8px;font-weight:800;'>Portal Login</div>", unsafe_allow_html=True)
             if st.button("← Kembali ke Dashboard", use_container_width=True, key="sidebar_back_dashboard"):
                 st.session_state['menu_aktif'] = "🏠 Dashboard"
+                st.session_state['_auto_close_sidebar'] = True
                 st.rerun()
             st.divider()
             render_sidebar_access_note("login")
@@ -2464,3 +2509,9 @@ else:
         halaman_hasil_spk()
     elif menu_pilihan == "⚙️ Pengaturan":
         halaman_profil()
+
+# ---------------------------------------------------------
+# 13. AUTO-CLOSE SIDEBAR DI HP SETELAH NAVIGASI MENU
+# ---------------------------------------------------------
+if st.session_state.pop('_auto_close_sidebar', False):
+    close_sidebar_on_mobile()
