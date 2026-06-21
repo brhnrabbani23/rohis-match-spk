@@ -407,6 +407,106 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+st.markdown("""
+<style>
+    /* =====================================================
+       FINAL OVERRIDE: BLUE SIDEBAR + SOFT BLUE-WHITE CANVAS
+       ===================================================== */
+    :root {
+        --rm-bg-soft: #EAF3FF;
+        --rm-bg-soft-2: #F4F9FF;
+        --rm-sidebar-blue: #1E40AF;
+        --rm-sidebar-blue-2: #2563EB;
+        --rm-sidebar-blue-3: #0F2F74;
+        --rm-white: #FFFFFF;
+        --rm-text-dark: #102A43;
+        --rm-muted-dark: #475569;
+        --rm-border-blue: #BFDBFE;
+        --rm-gold: #F59E0B;
+    }
+
+    /* Background utama tidak full putih, tapi putih kebiruan */
+    [data-testid="stAppViewContainer"] {
+        background:
+            radial-gradient(circle at 85% 5%, rgba(37,99,235,0.16), transparent 30%),
+            linear-gradient(135deg, #EAF3FF 0%, #F4F9FF 42%, #E9F2FF 100%) !important;
+    }
+
+    /* Sidebar dibuat biru tebal/elegan */
+    [data-testid="stSidebar"] {
+        background:
+            linear-gradient(180deg, #1E40AF 0%, #1D4ED8 48%, #0F2F74 100%) !important;
+        border-right: 1px solid rgba(255,255,255,0.25) !important;
+        box-shadow: 12px 0 30px rgba(30,64,175,0.22) !important;
+    }
+
+    /* Tombol sidebar: teks harus kontras */
+    section[data-testid="stSidebar"] .stButton > button[kind="primary"],
+    section[data-testid="stSidebar"] .stButton > button[kind="primary"] *,
+    section[data-testid="stSidebar"] .stButton > button[kind="primary"] p {
+        color: #1E40AF !important;
+        font-weight: 800 !important;
+    }
+
+    section[data-testid="stSidebar"] .stButton > button[kind="secondary"] {
+        background: rgba(255,255,255,0.10) !important;
+        color: #EAF3FF !important;
+        border: 1px solid rgba(255,255,255,0.18) !important;
+    }
+
+    section[data-testid="stSidebar"] .stButton > button[kind="secondary"] *,
+    section[data-testid="stSidebar"] .stButton > button[kind="secondary"] p {
+        color: #EAF3FF !important;
+    }
+
+    section[data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {
+        background: rgba(255,255,255,0.20) !important;
+        color: #FFFFFF !important;
+        border-color: rgba(255,255,255,0.42) !important;
+        transform: translateX(2px);
+    }
+
+    section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+        background: rgba(255,255,255,0.96) !important;
+        border: 1px solid rgba(255,255,255,0.88) !important;
+        border-left: 5px solid #F59E0B !important;
+        box-shadow: 0 12px 24px rgba(15,47,116,0.25) !important;
+    }
+
+    /* Tombol utama di area konten: kalau background biru, teks putih */
+    main button[kind="primary"],
+    main button[kind="primary"] *,
+    main button[kind="primary"] p,
+    div[data-testid="stAppViewContainer"] main .stButton > button[kind="primary"] *,
+    div[data-testid="stAppViewContainer"] main .stButton > button[kind="primary"] p {
+        color: #FFFFFF !important;
+    }
+
+    /* Kartu dan komponen konten tetap putih lembut, tidak silau */
+    [data-testid="stMetric"],
+    [data-testid="stForm"],
+    details,
+    [data-testid="stDataFrame"],
+    [data-testid="stVegaLiteChart"] {
+        background: rgba(255,255,255,0.86) !important;
+        backdrop-filter: blur(8px);
+    }
+
+    .rm-card {
+        background: rgba(255,255,255,0.88) !important;
+    }
+
+    /* Tombol login/logout sudah dipindah ke sidebar, jadi konten aman dari toolbar Streamlit */
+    .block-container {
+        padding-top: 2.4rem !important;
+    }
+
+    section[data-testid="stSidebar"] hr {
+        border-color: rgba(255,255,255,0.24) !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # ---------------------------------------------------------
 # 2. HELPER: KOMPONEN UI ISLAMI
 # ---------------------------------------------------------
@@ -501,35 +601,47 @@ def render_geo_badge(label: str, color: str = "#2563EB"):
 def render_sidebar_logo():
     st.markdown("""
     <div style="
-        padding: 18px 16px 14px;
-        border-bottom: 1px solid #BFDBFE;
-        margin-bottom: 4px;
+        padding: 20px 16px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.24);
+        margin-bottom: 10px;
     ">
-        <div style="font-size:10px;color:#3B82F6;letter-spacing:2.5px;margin-bottom:5px;font-weight:500;">
+        <div style="font-size:11px;color:#DBEAFE;letter-spacing:2px;margin-bottom:8px;font-weight:700;">
             بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ
         </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <polygon points="10,1 12,7 18,7 13,11 15,17 10,13 5,17 7,11 2,7 8,7"
-                    fill="none" stroke="#2563EB" stroke-width="1.2"/>
-                <circle cx="10" cy="10" r="2.2" fill="#D97706" opacity="0.85"/>
-            </svg>
-            <span style="font-size:19px;font-weight:700;color:#2563EB;letter-spacing:1px;">ROHIS-MATCH</span>
-        </div>
-        <div style="font-size:11px;color:#D97706;font-weight:500;margin-bottom:10px;">
-            SMPN 87 Jakarta
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <div style="
+                width:34px;height:34px;border-radius:12px;
+                background:rgba(255,255,255,0.14);
+                border:1px solid rgba(255,255,255,0.34);
+                display:flex;align-items:center;justify-content:center;
+                box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+            ">
+                <svg width="21" height="21" viewBox="0 0 20 20" fill="none">
+                    <polygon points="10,1 12,7 18,7 13,11 15,17 10,13 5,17 7,11 2,7 8,7"
+                        fill="none" stroke="#FFFFFF" stroke-width="1.3"/>
+                    <circle cx="10" cy="10" r="2.4" fill="#F59E0B" opacity="0.95"/>
+                </svg>
+            </div>
+            <div>
+                <div style="font-size:19px;font-weight:800;color:#FFFFFF;letter-spacing:1px;line-height:1;">
+                    ROHIS-MATCH
+                </div>
+                <div style="font-size:11px;color:#FCD34D;font-weight:800;margin-top:5px;">
+                    SMPN 87 Jakarta
+                </div>
+            </div>
         </div>
         <div style="
-            height:3px;
+            height:4px;
             background: repeating-linear-gradient(
                 90deg,
-                #2563EB 0px, #2563EB 8px,
-                #3B82F6 8px, #3B82F6 14px,
-                #D97706 14px, #D97706 18px,
-                #3B82F6 18px, #3B82F6 24px
+                #FFFFFF 0px, #FFFFFF 18px,
+                #93C5FD 18px, #93C5FD 34px,
+                #F59E0B 34px, #F59E0B 46px
             );
-            opacity:0.55;
-            border-radius:2px;
+            opacity:0.90;
+            border-radius:99px;
+            margin-top:14px;
         "></div>
     </div>
     """, unsafe_allow_html=True)
@@ -560,22 +672,22 @@ def render_sidebar_access_note(mode="public"):
         title = "Portal Login Khusus"
         desc = "Halaman ini hanya digunakan oleh Pembina dan Pengurus untuk mengelola data, input penilaian, dan melihat hasil rekomendasi."
         icon = "🔐"
-        border = "#2563EB"
+        border = "#F59E0B"
     else:
         title = "Akses Pengguna"
         desc = "Menu publik dapat dilihat tanpa akun. Login hanya untuk Pengurus dan Pembina Rohis."
         icon = "👥"
-        border = "#D97706"
+        border = "#F59E0B"
     st.markdown(f"""
-    <div style="background:#FFFFFF;border:1px solid #BFDBFE;border-left:4px solid {border};border-radius:10px;padding:13px 14px;margin-top:12px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+    <div style="background:rgba(255,255,255,0.94);border:1px solid rgba(255,255,255,0.78);border-left:5px solid {border};border-radius:14px;padding:14px 15px;margin-top:14px;box-shadow:0 12px 25px rgba(15,47,116,0.18);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">
             <span style="font-size:16px;">{icon}</span>
-            <span style="font-size:12px;font-weight:700;color:#102A43;">{title}</span>
+            <span style="font-size:12px;font-weight:800;color:#0F2F74;">{title}</span>
         </div>
-        <div style="font-size:11px;color:#475569;line-height:1.65;">{desc}</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
-            <span style="font-size:10px;background:#DBEAFE;color:#2563EB;border:1px solid #93C5FD;border-radius:999px;padding:3px 8px;">Pembina</span>
-            <span style="font-size:10px;background:#FFF7ED;color:#D97706;border:1px solid #FDBA74;border-radius:999px;padding:3px 8px;">Pengurus</span>
+        <div style="font-size:11px;color:#334155;line-height:1.75;">{desc}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:11px;">
+            <span style="font-size:10px;background:#DBEAFE;color:#1D4ED8;border:1px solid #93C5FD;border-radius:999px;padding:3px 8px;font-weight:700;">Pembina</span>
+            <span style="font-size:10px;background:#FFF7ED;color:#D97706;border:1px solid #FDBA74;border-radius:999px;padding:3px 8px;font-weight:700;">Pengurus</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -584,20 +696,20 @@ def render_sidebar_access_note(mode="public"):
 def render_sidebar_user_card(username, role_aktif):
     inisial = username[0].upper() if username else "?"
     role_label = (role_aktif or "pengguna").upper()
-    role_color = "#2563EB" if role_aktif == "pembina" else "#D97706"
+    role_color = "#1D4ED8" if role_aktif == "pembina" else "#D97706"
     st.markdown(f"""
-    <div style="background:#FFFFFF;border:1px solid #BFDBFE;border-radius:12px;padding:14px;margin-top:10px;">
-        <div style="font-size:10px;color:#60A5FA;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:10px;">Akun Aktif</div>
+    <div style="background:rgba(255,255,255,0.94);border:1px solid rgba(255,255,255,0.78);border-radius:14px;padding:14px;margin-top:12px;box-shadow:0 12px 25px rgba(15,47,116,0.18);">
+        <div style="font-size:10px;color:#64748B;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:10px;font-weight:800;">Akun Aktif</div>
         <div style="display:flex;align-items:center;gap:10px;">
             <div style="
-                width:38px;height:38px;border-radius:12px;
+                width:40px;height:40px;border-radius:13px;
                 background:#DBEAFE;border:1.5px solid {role_color};
                 display:flex;align-items:center;justify-content:center;
-                font-size:14px;color:{role_color};font-weight:800;flex-shrink:0;
+                font-size:14px;color:{role_color};font-weight:900;flex-shrink:0;
             ">{inisial}</div>
             <div style="min-width:0;">
-                <div style="font-size:12px;color:#102A43;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{username}</div>
-                <div style="font-size:10px;color:{role_color};font-weight:700;text-transform:uppercase;margin-top:2px;">{role_label}</div>
+                <div style="font-size:12px;color:#0F172A;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{username}</div>
+                <div style="font-size:10px;color:{role_color};font-weight:900;text-transform:uppercase;margin-top:2px;">{role_label}</div>
             </div>
         </div>
     </div>
@@ -1883,30 +1995,28 @@ def halaman_hasil_spk():
 # 12. ROUTING UTAMA & SIDEBAR
 # ---------------------------------------------------------
 if not st.session_state['logged_in']:
-    # Tombol login di pojok kanan atas
-    c_kiri, c_kanan = st.columns([8, 1])
-    with c_kanan:
-        if st.session_state['menu_aktif'] != "Login Akses":
-            if st.button("Login 👤", type="primary", use_container_width=True):
-                st.session_state['menu_aktif'] = "Login Akses"
-                st.rerun()
-        else:
-            if st.button("← Kembali", use_container_width=True):
-                st.session_state['menu_aktif'] = "🏠 Dashboard"
-                st.rerun()
-
     with st.sidebar:
         render_sidebar_logo()
 
         if st.session_state['menu_aktif'] != "Login Akses":
-            st.markdown("<div style='padding:6px 4px 6px;font-size:10px;color:#60A5FA;text-transform:uppercase;letter-spacing:1.5px;margin-top:8px;'>Menu Publik</div>", unsafe_allow_html=True)
+            st.markdown("<div style='padding:8px 4px 6px;font-size:10px;color:#DBEAFE;text-transform:uppercase;letter-spacing:1.8px;margin-top:8px;font-weight:800;'>Menu Publik</div>", unsafe_allow_html=True)
             render_sidebar_menu(["🏠 Dashboard", "⭐ Hasil Ranking"], key_prefix="public_menu")
+
+            st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+            if st.button("🔐 Login Akses", type="primary", use_container_width=True, key="sidebar_login_access"):
+                st.session_state['menu_aktif'] = "Login Akses"
+                st.rerun()
+
             st.divider()
             render_sidebar_access_note("public")
         else:
+            st.markdown("<div style='padding:8px 4px 6px;font-size:10px;color:#DBEAFE;text-transform:uppercase;letter-spacing:1.8px;margin-top:8px;font-weight:800;'>Portal Login</div>", unsafe_allow_html=True)
+            if st.button("← Kembali ke Dashboard", use_container_width=True, key="sidebar_back_dashboard"):
+                st.session_state['menu_aktif'] = "🏠 Dashboard"
+                st.rerun()
+            st.divider()
             render_sidebar_access_note("login")
 
-    # Render halaman
     page = st.session_state['menu_aktif']
     if page == "🏠 Dashboard":
         halaman_dashboard()
@@ -1916,12 +2026,6 @@ if not st.session_state['logged_in']:
         halaman_login()
 
 else:
-    # Tombol logout
-    c_kiri, c_kanan = st.columns([8, 1])
-    with c_kanan:
-        if st.button("Keluar 🚪", use_container_width=True):
-            dialog_konfirmasi_logout()
-
     with st.sidebar:
         render_sidebar_logo()
 
@@ -1935,7 +2039,7 @@ else:
         else:
             daftar_menu = ["🏠 Dashboard", "⚙️ Pengaturan"]
 
-        st.markdown("<div style='padding:6px 4px 6px;font-size:10px;color:#60A5FA;text-transform:uppercase;letter-spacing:1.5px;margin-top:8px;'>Menu Utama</div>", unsafe_allow_html=True)
+        st.markdown("<div style='padding:8px 4px 6px;font-size:10px;color:#DBEAFE;text-transform:uppercase;letter-spacing:1.8px;margin-top:8px;font-weight:800;'>Menu Utama</div>", unsafe_allow_html=True)
         render_sidebar_menu(daftar_menu, key_prefix="main_menu")
         menu_pilihan = st.session_state.get('menu_aktif') or daftar_menu[0]
         if menu_pilihan not in daftar_menu:
@@ -1944,6 +2048,10 @@ else:
 
         st.divider()
         render_sidebar_user_card(username, role_aktif)
+
+        st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+        if st.button("Keluar 🚪", use_container_width=True, key="sidebar_logout"):
+            dialog_konfirmasi_logout()
 
     if menu_pilihan == "🏠 Dashboard":
         halaman_dashboard()
