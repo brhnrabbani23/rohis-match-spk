@@ -1022,14 +1022,8 @@ def halaman_dashboard():
 
     with col_chart:
         st.markdown("""
-        <div style="
-            background:#FFFFFF;border:1px solid #BFDBFE;
-            border-radius:10px;padding:16px;margin-bottom:12px;
-        ">
-            <div style="font-size:13px;font-weight:500;color:#1E293B;margin-bottom:10px;">
-                📈 Sebaran Anggota per Divisi
-            </div>
-        </div>
+        <div class="rm-dashboard-panel">
+            <div class="rm-dashboard-title">📈 Sebaran Anggota per Divisi</div>
         """, unsafe_allow_html=True)
 
         cursor.execute("""
@@ -1066,13 +1060,8 @@ def halaman_dashboard():
 
     with col_rank:
         st.markdown("""
-        <div style="
-            background:#FFFFFF;border:1px solid #BFDBFE;
-            border-radius:10px;padding:16px;
-        ">
-            <div style="font-size:13px;font-weight:500;color:#1E293B;margin-bottom:12px;">
-                🏆 Top 5 Anggota dengan Nilai Keseluruhan Terbaik
-            </div>
+        <div class="rm-dashboard-panel">
+            <div class="rm-dashboard-title">🏆 Top 5 Anggota dengan Nilai Keseluruhan Terbaik</div>
         """, unsafe_allow_html=True)
 
         # Kueri baru: Menghitung rata-rata mentah (1-100) dari nilai aktual siswa
@@ -1104,13 +1093,9 @@ def halaman_dashboard():
                 divisi = siswa['nama_divisi'].split(" / ")[0] if siswa['nama_divisi'] else "Belum Ditentukan"
                 border_color = "#D97706" if i == 0 else "#93C5FD"
                 text_color = "#D97706" if i == 0 else "#2563EB"
+                item_class = "rm-top-member-item first" if i == 0 else "rm-top-member-item"
                 st.markdown(f"""
-                <div style="
-                    display:flex;align-items:center;gap:8px;
-                    background:#EFF6FF;border-radius:8px;
-                    padding:8px 10px;margin-bottom:6px;
-                    border:1px solid {border_color};
-                ">
+                <div class="{item_class}" style="border-color:{border_color};">
                     <span style="font-size:14px;width:20px;">{medals[i]}</span>
                     <div style="
                         width:28px;height:28px;border-radius:50%;
@@ -2243,6 +2228,76 @@ st.markdown("""
             radial-gradient(circle at 50% 92%, rgba(147,197,253,0.26) 0%, rgba(147,197,253,0.12) 38%, transparent 66%),
             linear-gradient(135deg, #E6F1FF 0%, #F2F8FF 34%, #EAF3FF 72%, #E0EDFF 100%) !important;
         background-attachment: fixed !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+
+
+# ---------------------------------------------------------
+# FINAL UI PATCH V5: dashboard chart + top 5 equal card layout
+# ---------------------------------------------------------
+st.markdown("""
+<style>
+    /* Chart dashboard dirapikan agar tidak terlihat keluar dari card */
+    .rm-dashboard-panel {
+        background: rgba(255,255,255,0.88);
+        border: 1px solid #B7D3FF;
+        border-radius: 16px;
+        box-shadow: 0 12px 28px rgba(30,64,175,0.10);
+        padding: 16px;
+        min-height: 455px;
+        overflow: hidden;
+    }
+
+    .rm-dashboard-title {
+        display:flex;
+        align-items:center;
+        gap:8px;
+        font-size:13px;
+        font-weight:800;
+        color:#0F2F74;
+        margin-bottom:14px;
+        padding-bottom:12px;
+        border-bottom:1px solid rgba(147,197,253,0.65);
+    }
+
+    .rm-chart-shell {
+        background: #EAF3FF;
+        border: 1px solid #B7D3FF;
+        border-radius: 14px;
+        padding: 12px 12px 4px 12px;
+        overflow: hidden;
+    }
+
+    .rm-chart-shell [data-testid="stVegaLiteChart"] {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        border-radius: 12px !important;
+    }
+
+    .rm-top-member-item {
+        display:flex;
+        align-items:center;
+        gap:10px;
+        background:rgba(239,246,255,0.94);
+        border-radius:12px;
+        padding:10px 12px;
+        margin-bottom:9px;
+        border:1px solid #93C5FD;
+        min-height:54px;
+        box-sizing:border-box;
+    }
+
+    .rm-top-member-item.first {
+        border-color:#F59E0B;
+        background:rgba(255,247,237,0.88);
+    }
+
+    .rm-top-member-item:last-child {
+        margin-bottom:0;
     }
 </style>
 """, unsafe_allow_html=True)
