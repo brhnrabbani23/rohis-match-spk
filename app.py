@@ -861,53 +861,37 @@ def get_tahun_ajaran():
 
 
 def close_sidebar_on_mobile():
-    """Menutup sidebar otomatis setelah menu diklik di layar HP.
-    Dibuat pakai retry karena sidebar Streamlit kadang belum siap setelah rerun.
+    """Mencoba menutup sidebar otomatis setelah menu diklik di layar HP.
+    Tidak memengaruhi tampilan laptop karena hanya jalan saat lebar layar <= 768px.
     """
     if st.session_state.get("_close_sidebar_mobile", False):
         st.session_state["_close_sidebar_mobile"] = False
         components.html("""
         <script>
-        function tryCloseSidebar(attempt = 0) {
+        setTimeout(function() {
             try {
                 const isMobile = window.parent.innerWidth <= 768;
                 if (!isMobile) return;
 
                 const doc = window.parent.document;
-
                 const selectors = [
                     '[data-testid="stSidebarCollapseButton"] button',
                     '[data-testid="stSidebarCollapseButton"]',
-                    '[data-testid="collapsedControl"] button',
-                    '[data-testid="collapsedControl"]',
                     'button[aria-label="Close sidebar"]',
-                    'button[aria-label="close sidebar"]',
-                    'button[title="Close sidebar"]',
-                    'button[title="close sidebar"]'
+                    'button[title="Close sidebar"]'
                 ];
-
-                let clicked = false;
 
                 for (const selector of selectors) {
                     const btn = doc.querySelector(selector);
                     if (btn) {
                         btn.click();
-                        clicked = true;
                         break;
                     }
                 }
-
-                if (!clicked && attempt < 8) {
-                    setTimeout(() => tryCloseSidebar(attempt + 1), 250);
-                }
             } catch (e) {
-                if (attempt < 8) {
-                    setTimeout(() => tryCloseSidebar(attempt + 1), 250);
-                }
+                console.log("Auto close sidebar skipped:", e);
             }
-        }
-
-        setTimeout(() => tryCloseSidebar(), 350);
+        }, 280);
         </script>
         """, height=0, width=0)
 
@@ -1091,124 +1075,47 @@ def halaman_dashboard():
             df_sebaran = pd.DataFrame(data_sebaran)
             df_sebaran = df_sebaran.rename(columns={'nama_divisi': 'Divisi', 'jumlah': 'Jumlah Siswa'})
 
-            max_value = int(df_sebaran["Jumlah Siswa"].max()) if not df_sebaran.empty else 1
-            max_value = max(max_value, 1)
+            chart = alt.Chart(df_sebaran).mark_bar(
+                color='#2563EB',
+                cornerRadiusTopLeft=8,
+                cornerRadiusTopRight=8,
+                size=34
+            ).encode(
+                x=alt.X(
+                    'Divisi:N',
+                    sort='-y',
+                    axis=alt.Axis(
+                        labelAngle=-40,
+                        title=None,
+                        labelColor='#0F2F74',
+                        labelFontSize=11,
+                        labelLimit=120
+                    )
+                ),
+                y=alt.Y(
+                    'Jumlah Siswa:Q',
+                    axis=alt.Axis(
+                        grid=True,
+                        gridColor='#BFDBFE',
+                        title=None,
+                        labelColor='#0F2F74',
+                        tickMinStep=1
+                    )
+                )
+            ).properties(
+                width=760,
+                height=320,
+                background='#EAF3FF'
+            ).configure_view(
+                strokeWidth=0
+            ).configure_axis(
+                domainColor='#93C5FD',
+                tickColor='#93C5FD'
+            )
 
-            bars_html = ""
-            for _, row in df_sebaran.sort_values("Jumlah Siswa", ascending=False).iterrows():
-                divisi = str(row["Divisi"])
-                jumlah = int(row["Jumlah Siswa"])
-                tinggi = int((jumlah / max_value) * 220)
-
-                bars_html += f"""
-                <div class="mobile-bar-item">
-                    <div class="mobile-bar-area">
-                        <div class="mobile-bar-value">{jumlah}</div>
-                        <div class="mobile-bar" style="height:{tinggi}px;"></div>
-                    </div>
-                    <div class="mobile-bar-label">{divisi}</div>
-                </div>
-                """
-
-            chart_html = f"""
-            <style>
-                .mobile-chart-card {{
-                    width: 100%;
-                    background: rgba(255,255,255,0.88);
-                    border: 1px solid #B7D3FF;
-                    border-radius: 16px;
-                    padding: 14px;
-                    box-sizing: border-box;
-                    overflow-x: auto;
-                    overflow-y: hidden;
-                    -webkit-overflow-scrolling: touch;
-                    box-shadow: 0 12px 28px rgba(30,64,175,0.10);
-                }}
-
-                .mobile-chart-inner {{
-                    min-width: 760px;
-                    height: 340px;
-                    background: #EAF3FF;
-                    border: 1px solid #B7D3FF;
-                    border-radius: 14px;
-                    padding: 18px 18px 10px;
-                    display: flex;
-                    align-items: flex-end;
-                    gap: 28px;
-                    box-sizing: border-box;
-                    position: relative;
-                }}
-
-                .mobile-chart-inner::before {{
-                    content: "";
-                    position: absolute;
-                    left: 18px;
-                    right: 18px;
-                    top: 70px;
-                    height: 1px;
-                    background: #BFDBFE;
-                    box-shadow:
-                        0 70px 0 #BFDBFE,
-                        0 140px 0 #BFDBFE,
-                        0 210px 0 #BFDBFE;
-                }}
-
-                .mobile-bar-item {{
-                    width: 64px;
-                    height: 300px;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: flex-end;
-                    flex-shrink: 0;
-                    position: relative;
-                    z-index: 2;
-                }}
-
-                .mobile-bar-area {{
-                    height: 235px;
-                    width: 100%;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: flex-end;
-                    align-items: center;
-                }}
-
-                .mobile-bar {{
-                    width: 42px;
-                    background: #2563EB;
-                    border-radius: 10px 10px 0 0;
-                    box-shadow: 0 6px 14px rgba(37,99,235,0.20);
-                }}
-
-                .mobile-bar-value {{
-                    font-size: 11px;
-                    font-weight: 800;
-                    color: #0F2F74;
-                    margin-bottom: 5px;
-                }}
-
-                .mobile-bar-label {{
-                    margin-top: 12px;
-                    width: 95px;
-                    font-size: 11px;
-                    font-weight: 600;
-                    color: #0F2F74;
-                    text-align: right;
-                    transform: rotate(-42deg);
-                    transform-origin: center;
-                    white-space: nowrap;
-                }}
-            </style>
-
-            <div class="mobile-chart-card">
-                <div class="mobile-chart-inner">
-                    {bars_html}
-                </div>
-            </div>
-            """
-
-            components.html(chart_html, height=395, scrolling=False)
+            st.markdown('<div class="rm-chart-scroll">', unsafe_allow_html=True)
+            st.altair_chart(chart, use_container_width=False)
+            st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.info("Belum ada data penempatan divisi.")
 
@@ -2426,6 +2333,75 @@ st.markdown("""
         font-weight: 800;
         color: #0F2F74;
     }
+
+    .rm-chart-scroll {
+        background: rgba(255,255,255,0.88);
+        border: 1px solid #B7D3FF;
+        border-radius: 16px;
+        padding: 14px;
+        box-shadow: 0 12px 28px rgba(30,64,175,0.10);
+        overflow-x: auto;
+        overflow-y: hidden;
+        box-sizing: border-box;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .rm-chart-scroll [data-testid="stVegaLiteChart"] {
+        background: #EAF3FF !important;
+        border: 1px solid #B7D3FF !important;
+        border-radius: 14px !important;
+        padding: 8px !important;
+        box-shadow: none !important;
+        min-width: 760px !important;
+        width: 760px !important;
+        box-sizing: border-box !important;
+    }
+
+    .rm-top-panel-title {
+        background: rgba(255,255,255,0.88);
+        border: 1px solid #B7D3FF;
+        border-radius: 16px 16px 0 0;
+        padding: 15px 16px;
+        box-shadow: 0 10px 24px rgba(30,64,175,0.08);
+        font-size: 13px;
+        font-weight: 800;
+        color: #0F2F74;
+        border-bottom: 1px solid rgba(147,197,253,0.70);
+        margin-bottom: 0;
+    }
+
+    .rm-top-panel-title + div {
+        background: rgba(255,255,255,0.88);
+        border-left: 1px solid #B7D3FF;
+        border-right: 1px solid #B7D3FF;
+    }
+
+    /* Hilangkan tooltip accidental pada mobile dengan mengurangi pointer event chart */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-top: 0.25rem !important;
+            padding-left: 0.9rem !important;
+            padding-right: 0.9rem !important;
+        }
+
+        [data-testid="stSidebar"] {
+            width: 82vw !important;
+            min-width: 82vw !important;
+        }
+
+        section[data-testid="stSidebar"] > div:first-child {
+            padding-top: 0.15rem !important;
+        }
+
+        .rm-chart-scroll {
+            padding: 10px;
+            border-radius: 16px;
+        }
+
+        .rm-chart-scroll [data-testid="stVegaLiteChart"] {
+            min-width: 720px !important;
+            width: 720px !important;
+        }
 
         /* Di HP, chart bisa digeser horizontal dan tooltip tidak gampang muncul sendiri */
         .rm-chart-scroll canvas,
