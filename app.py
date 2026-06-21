@@ -1079,7 +1079,7 @@ def halaman_dashboard():
             st.altair_chart(chart, use_container_width=True)
         else:
             st.info("Belum ada data penempatan divisi.")
-
+    
     with col_rank:
         cursor.execute("""
             SELECT s.nama_siswa, s.kelas,
@@ -1102,54 +1102,59 @@ def halaman_dashboard():
 
         medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
 
-        top_html = """
-        <div class="rm-top-panel">
-            <div class="rm-top-title">🏆 Top 5 Anggota dengan Nilai Keseluruhan Terbaik</div>
-        """
+        html_parts = []
+        html_parts.append('<div class="rm-top-panel">')
+        html_parts.append('<div class="rm-top-title">🏆 Top 5 Anggota dengan Nilai Keseluruhan Terbaik</div>')
 
         if top_list:
             for i, siswa in enumerate(top_list):
-                inisial = "".join([n[0].upper() for n in siswa['nama_siswa'].split()[:2]])
-                skor_pct = float(siswa['rata_rata_100'])
-                divisi = siswa['nama_divisi'].split(" / ")[0] if siswa['nama_divisi'] else "Belum Ditentukan"
+                inisial = "".join([n[0].upper() for n in siswa["nama_siswa"].split()[:2]])
+                skor_pct = float(siswa["rata_rata_100"])
+                divisi = siswa["nama_divisi"].split(" / ")[0] if siswa["nama_divisi"] else "Belum Ditentukan"
+
                 border_color = "#D97706" if i == 0 else "#93C5FD"
                 text_color = "#D97706" if i == 0 else "#2563EB"
                 item_class = "rm-top-item first" if i == 0 else "rm-top-item"
 
-                top_html += f"""
-                <div class="{item_class}" style="border-color:{border_color};">
-                    <span style="font-size:14px;width:20px;flex-shrink:0;">{medals[i]}</span>
-                    <div style="
-                        width:30px;height:30px;border-radius:50%;
-                        background:#DBEAFE;border:1.5px solid {border_color};
-                        display:flex;align-items:center;justify-content:center;
-                        font-size:10px;color:{text_color};font-weight:800;flex-shrink:0;
-                    ">{inisial}</div>
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-size:11px;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;">{siswa['nama_siswa']}</div>
-                        <div style="font-size:10px;color:#64748B;margin-top:2px;">{divisi}</div>
-                    </div>
-                    <div style="font-size:12px;font-weight:900;color:{text_color};white-space:nowrap;">{skor_pct:.1f}/100</div>
-                </div>
-                """
+                html_parts.append(
+                    f'<div class="{item_class}" style="border-color:{border_color};">'
+                    f'<span style="font-size:14px;width:20px;flex-shrink:0;">{medals[i]}</span>'
+                    f'<div style="'
+                    f'width:30px;height:30px;border-radius:50%;'
+                    f'background:#DBEAFE;border:1.5px solid {border_color};'
+                    f'display:flex;align-items:center;justify-content:center;'
+                    f'font-size:10px;color:{text_color};font-weight:800;flex-shrink:0;'
+                    f'">{inisial}</div>'
+                    f'<div style="flex:1;min-width:0;">'
+                    f'<div style="font-size:11px;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;">'
+                    f'{siswa["nama_siswa"]}'
+                    f'</div>'
+                    f'<div style="font-size:10px;color:#64748B;margin-top:2px;">{divisi}</div>'
+                    f'</div>'
+                    f'<div style="font-size:12px;font-weight:900;color:{text_color};white-space:nowrap;">'
+                    f'{skor_pct:.1f}/100'
+                    f'</div>'
+                    f'</div>'
+                )
         else:
-            top_html += """
-            <div style="
-                background:#EFF6FF;
-                border:1px dashed #93C5FD;
-                border-radius:13px;
-                padding:16px;
-                color:#64748B;
-                font-size:12px;
-                line-height:1.6;
-            ">
-                Belum ada data ranking yang dapat ditampilkan.
-            </div>
-            """
+            html_parts.append(
+                '<div style="'
+                'background:#EFF6FF;'
+                'border:1px dashed #93C5FD;'
+                'border-radius:13px;'
+                'padding:16px;'
+                'color:#64748B;'
+                'font-size:12px;'
+                'line-height:1.6;'
+                '">'
+                'Belum ada data ranking yang dapat ditampilkan.'
+                '</div>'
+            )
 
-        top_html += "</div>"
-        st.markdown(top_html, unsafe_allow_html=True)
+        html_parts.append('</div>')
 
+        st.markdown("".join(html_parts), unsafe_allow_html=True)
+        
     # Log aktivitas terbaru (hanya jika login)
     if st.session_state['logged_in']:
         render_divider_arabic()
