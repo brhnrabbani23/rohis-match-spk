@@ -601,11 +601,11 @@ def render_geo_badge(label: str, color: str = "#2563EB"):
 def render_sidebar_logo():
     st.markdown("""
     <div style="
-        padding: 20px 16px 16px;
+        padding: 10px 16px 16px;
         border-bottom: 1px solid rgba(255,255,255,0.24);
         margin-bottom: 10px;
     ">
-        <div style="font-size:11px;color:#DBEAFE;letter-spacing:2px;margin-bottom:8px;font-weight:700;">
+        <div style="font-size:11px;color:#DBEAFE;letter-spacing:1.6px;margin-bottom:8px;font-weight:700;text-align:center;">
             بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ
         </div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
@@ -2349,6 +2349,44 @@ st.markdown("""
 
     .rm-top-item:last-child {
         margin-bottom: 0;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+
+
+# ---------------------------------------------------------
+# FINAL SAFE PATCH: TIGHTER TOP GAP WITHOUT CHANGING DESIGN
+# ---------------------------------------------------------
+st.markdown("""
+<style>
+    /* Mengurangi jarak kosong antara toolbar Streamlit dan konten aplikasi.
+       Tidak mengubah layout, tabel, ranking, chart, atau desain utama. */
+    .block-container {
+        padding-top: 0.65rem !important;
+        padding-bottom: 2rem !important;
+    }
+
+    /* Sidebar dibuat lebih rapat ke atas agar logo tidak terlalu jauh dari tombol buka/tutup sidebar. */
+    section[data-testid="stSidebar"] > div:first-child {
+        padding-top: 0.15rem !important;
+    }
+
+    div[data-testid="stSidebarUserContent"] {
+        padding-top: 0 !important;
+    }
+
+    /* Khusus layar HP: lebih rapat lagi, tapi tetap aman dari toolbar browser/Streamlit. */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-top: 0.35rem !important;
+            padding-left: 0.9rem !important;
+            padding-right: 0.9rem !important;
+        }
+
+        section[data-testid="stSidebar"] > div:first-child {
+            padding-top: 0.05rem !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
