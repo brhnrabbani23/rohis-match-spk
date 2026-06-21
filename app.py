@@ -2350,6 +2350,19 @@ st.markdown("""
         overflow: hidden !important;
     }
 
+    /* Khusus HP: biar bar yang kepotong (mis. PSDM) bisa digeser ke kanan,
+       bukan ketutup permanen. Desktop tidak berubah karena ada di dalam media query. */
+    @media (max-width: 768px) {
+        [data-testid="stVegaLiteChart"] {
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            -webkit-overflow-scrolling: touch !important;
+        }
+        [data-testid="stVegaLiteChart"] > div {
+            overflow: visible !important;
+        }
+    }
+
     .rm-top-panel {
         background: rgba(255,255,255,0.88);
         border: 1px solid #B7D3FF;
