@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import mysql.connector
 import pandas as pd
 import time
@@ -601,11 +602,11 @@ def render_geo_badge(label: str, color: str = "#2563EB"):
 def render_sidebar_logo():
     st.markdown("""
     <div style="
-        padding: 20px 16px 16px;
+        padding: 10px 16px 14px;
         border-bottom: 1px solid rgba(255,255,255,0.24);
         margin-bottom: 10px;
     ">
-        <div style="font-size:11px;color:#DBEAFE;letter-spacing:2px;margin-bottom:8px;font-weight:700;">
+        <div style="font-size:11px;color:#DBEAFE;letter-spacing:1.6px;margin-bottom:8px;font-weight:700;text-align:center;">
             بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ
         </div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
@@ -641,7 +642,7 @@ def render_sidebar_logo():
             );
             opacity:0.90;
             border-radius:99px;
-            margin-top:14px;
+            margin-top:12px;
         "></div>
     </div>
     """, unsafe_allow_html=True)
@@ -664,6 +665,7 @@ def render_sidebar_menu(menu_items, key_prefix="menu"):
             if st.session_state.get('menu_aktif') != item:
                 catat_log(f"Membuka halaman {item}")
             st.session_state['menu_aktif'] = item
+            st.session_state['_close_sidebar_mobile'] = True
             st.rerun()
 
 
@@ -857,6 +859,42 @@ def get_tahun_ajaran():
     start_year = today.year if today.month >= 7 else today.year - 1
     return f"{start_year}/{start_year + 1}"
 
+
+def close_sidebar_on_mobile():
+    """Mencoba menutup sidebar otomatis setelah menu diklik di layar HP.
+    Tidak memengaruhi tampilan laptop karena hanya jalan saat lebar layar <= 768px.
+    """
+    if st.session_state.get("_close_sidebar_mobile", False):
+        st.session_state["_close_sidebar_mobile"] = False
+        components.html("""
+        <script>
+        setTimeout(function() {
+            try {
+                const isMobile = window.parent.innerWidth <= 768;
+                if (!isMobile) return;
+
+                const doc = window.parent.document;
+                const selectors = [
+                    '[data-testid="stSidebarCollapseButton"] button',
+                    '[data-testid="stSidebarCollapseButton"]',
+                    'button[aria-label="Close sidebar"]',
+                    'button[title="Close sidebar"]'
+                ];
+
+                for (const selector of selectors) {
+                    const btn = doc.querySelector(selector);
+                    if (btn) {
+                        btn.click();
+                        break;
+                    }
+                }
+            } catch (e) {
+                console.log("Auto close sidebar skipped:", e);
+            }
+        }, 280);
+        </script>
+        """, height=0, width=0)
+
 def proses_logout():
     catat_log("Keluar (logout) dari sistem")
     for k in ['logged_in', 'username', 'role']:
@@ -1021,7 +1059,9 @@ def halaman_dashboard():
     col_chart, col_rank = st.columns([2, 1], gap="medium")
 
     with col_chart:
-        st.markdown('<div class="rm-section-title">📈 Sebaran Anggota per Divisi</div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="rm-section-title">📈 Sebaran Anggota per Divisi</div>
+        """, unsafe_allow_html=True)
 
         cursor.execute("""
             SELECT d.nama_divisi, COUNT(h.id_ranking) as jumlah
@@ -1039,7 +1079,7 @@ def halaman_dashboard():
                 color='#2563EB',
                 cornerRadiusTopLeft=8,
                 cornerRadiusTopRight=8,
-                size=38
+                size=34
             ).encode(
                 x=alt.X(
                     'Divisi:N',
@@ -1061,13 +1101,10 @@ def halaman_dashboard():
                         labelColor='#0F2F74',
                         tickMinStep=1
                     )
-                ),
-                tooltip=[
-                    alt.Tooltip('Divisi:N', title='Nama Divisi'),
-                    alt.Tooltip('Jumlah Siswa:Q', title='Total Anggota')
-                ]
+                )
             ).properties(
-                height=340,
+                width=760,
+                height=320,
                 background='#EAF3FF'
             ).configure_view(
                 strokeWidth=0
@@ -1076,11 +1113,17 @@ def halaman_dashboard():
                 tickColor='#93C5FD'
             )
 
-            st.altair_chart(chart, use_container_width=True)
+            st.markdown('<div class="rm-chart-scroll">', unsafe_allow_html=True)
+            st.altair_chart(chart, use_container_width=False)
+            st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.info("Belum ada data penempatan divisi.")
-    
+
     with col_rank:
+        st.markdown("""
+        <div class="rm-top-panel-title">🏆 Top 5 Anggota dengan Nilai Keseluruhan Terbaik</div>
+        """, unsafe_allow_html=True)
+
         cursor.execute("""
             SELECT s.nama_siswa, s.kelas,
                    COALESCE((
@@ -1102,59 +1145,50 @@ def halaman_dashboard():
 
         medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
 
-        html_parts = []
-        html_parts.append('<div class="rm-top-panel">')
-        html_parts.append('<div class="rm-top-title">🏆 Top 5 Anggota dengan Nilai Keseluruhan Terbaik</div>')
-
         if top_list:
             for i, siswa in enumerate(top_list):
-                inisial = "".join([n[0].upper() for n in siswa["nama_siswa"].split()[:2]])
-                skor_pct = float(siswa["rata_rata_100"])
-                divisi = siswa["nama_divisi"].split(" / ")[0] if siswa["nama_divisi"] else "Belum Ditentukan"
+                inisial = "".join([n[0].upper() for n in siswa['nama_siswa'].split()[:2]])
+                skor_pct = float(siswa['rata_rata_100'])
+                divisi = siswa['nama_divisi'].split(" / ")[0] if siswa['nama_divisi'] else "Belum Ditentukan"
 
                 border_color = "#D97706" if i == 0 else "#93C5FD"
                 text_color = "#D97706" if i == 0 else "#2563EB"
-                item_class = "rm-top-item first" if i == 0 else "rm-top-item"
+                bg_color = "rgba(255,247,237,0.92)" if i == 0 else "rgba(239,246,255,0.92)"
 
-                html_parts.append(
-                    f'<div class="{item_class}" style="border-color:{border_color};">'
-                    f'<span style="font-size:14px;width:20px;flex-shrink:0;">{medals[i]}</span>'
-                    f'<div style="'
-                    f'width:30px;height:30px;border-radius:50%;'
-                    f'background:#DBEAFE;border:1.5px solid {border_color};'
-                    f'display:flex;align-items:center;justify-content:center;'
-                    f'font-size:10px;color:{text_color};font-weight:800;flex-shrink:0;'
-                    f'">{inisial}</div>'
-                    f'<div style="flex:1;min-width:0;">'
-                    f'<div style="font-size:11px;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;">'
-                    f'{siswa["nama_siswa"]}'
-                    f'</div>'
-                    f'<div style="font-size:10px;color:#64748B;margin-top:2px;">{divisi}</div>'
-                    f'</div>'
-                    f'<div style="font-size:12px;font-weight:900;color:{text_color};white-space:nowrap;">'
-                    f'{skor_pct:.1f}/100'
-                    f'</div>'
-                    f'</div>'
-                )
+                st.markdown(f"""
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    gap:10px;
+                    background:{bg_color};
+                    border:1px solid {border_color};
+                    border-radius:13px;
+                    padding:10px 12px;
+                    margin-bottom:9px;
+                    min-height:56px;
+                    box-sizing:border-box;
+                ">
+                    <span style="font-size:14px;width:20px;flex-shrink:0;">{medals[i]}</span>
+                    <div style="
+                        width:30px;height:30px;border-radius:50%;
+                        background:#DBEAFE;border:1.5px solid {border_color};
+                        display:flex;align-items:center;justify-content:center;
+                        font-size:10px;color:{text_color};font-weight:800;flex-shrink:0;
+                    ">{inisial}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:11px;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;">
+                            {siswa['nama_siswa']}
+                        </div>
+                        <div style="font-size:10px;color:#64748B;margin-top:2px;">{divisi}</div>
+                    </div>
+                    <div style="font-size:12px;font-weight:900;color:{text_color};white-space:nowrap;">
+                        {skor_pct:.1f}/100
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
         else:
-            html_parts.append(
-                '<div style="'
-                'background:#EFF6FF;'
-                'border:1px dashed #93C5FD;'
-                'border-radius:13px;'
-                'padding:16px;'
-                'color:#64748B;'
-                'font-size:12px;'
-                'line-height:1.6;'
-                '">'
-                'Belum ada data ranking yang dapat ditampilkan.'
-                '</div>'
-            )
+            st.info("Belum ada data ranking.")
 
-        html_parts.append('</div>')
-
-        st.markdown("".join(html_parts), unsafe_allow_html=True)
-        
     # Log aktivitas terbaru (hanya jika login)
     if st.session_state['logged_in']:
         render_divider_arabic()
@@ -2275,10 +2309,19 @@ st.markdown("""
 
 
 # ---------------------------------------------------------
-# FINAL UI PATCH V6: clean dashboard chart and top-5 panel
+# FINAL UI PATCH V7: mobile responsive fix
 # ---------------------------------------------------------
 st.markdown("""
 <style>
+    /* Kurangi jarak kosong atas agar konten lebih dekat ke toolbar Streamlit */
+    .block-container {
+        padding-top: 0.75rem !important;
+    }
+
+    section[data-testid="stSidebar"] > div:first-child {
+        padding-top: 0.35rem !important;
+    }
+
     .rm-section-title {
         background: rgba(255,255,255,0.88);
         border: 1px solid #B7D3FF;
@@ -2291,64 +2334,86 @@ st.markdown("""
         color: #0F2F74;
     }
 
-    /* Chart langsung dijadikan card, bukan dibungkus div kosong */
-    [data-testid="stVegaLiteChart"] {
-        background: rgba(255,255,255,0.88) !important;
-        border: 1px solid #B7D3FF !important;
-        border-radius: 16px !important;
-        padding: 16px 16px 8px 16px !important;
-        box-shadow: 0 12px 28px rgba(30,64,175,0.10) !important;
-        overflow: hidden !important;
-        box-sizing: border-box !important;
-    }
-
-    [data-testid="stVegaLiteChart"] > div {
-        border-radius: 12px !important;
-        overflow: hidden !important;
-    }
-
-    .rm-top-panel {
+    .rm-chart-scroll {
         background: rgba(255,255,255,0.88);
         border: 1px solid #B7D3FF;
         border-radius: 16px;
-        padding: 15px 16px;
+        padding: 14px;
         box-shadow: 0 12px 28px rgba(30,64,175,0.10);
-        min-height: 438px;
+        overflow-x: auto;
+        overflow-y: hidden;
         box-sizing: border-box;
+        -webkit-overflow-scrolling: touch;
     }
 
-    .rm-top-title {
-        display: flex;
-        align-items: center;
-        gap: 8px;
+    .rm-chart-scroll [data-testid="stVegaLiteChart"] {
+        background: #EAF3FF !important;
+        border: 1px solid #B7D3FF !important;
+        border-radius: 14px !important;
+        padding: 8px !important;
+        box-shadow: none !important;
+        min-width: 760px !important;
+        width: 760px !important;
+        box-sizing: border-box !important;
+    }
+
+    .rm-top-panel-title {
+        background: rgba(255,255,255,0.88);
+        border: 1px solid #B7D3FF;
+        border-radius: 16px 16px 0 0;
+        padding: 15px 16px;
+        box-shadow: 0 10px 24px rgba(30,64,175,0.08);
         font-size: 13px;
         font-weight: 800;
         color: #0F2F74;
-        padding-bottom: 13px;
-        margin-bottom: 12px;
-        border-bottom: 1px solid rgba(147,197,253,0.72);
-    }
-
-    .rm-top-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background: rgba(239,246,255,0.92);
-        border: 1px solid #93C5FD;
-        border-radius: 13px;
-        padding: 10px 12px;
-        margin-bottom: 9px;
-        min-height: 56px;
-        box-sizing: border-box;
-    }
-
-    .rm-top-item.first {
-        background: rgba(255,247,237,0.92);
-        border-color: #F59E0B;
-    }
-
-    .rm-top-item:last-child {
+        border-bottom: 1px solid rgba(147,197,253,0.70);
         margin-bottom: 0;
+    }
+
+    .rm-top-panel-title + div {
+        background: rgba(255,255,255,0.88);
+        border-left: 1px solid #B7D3FF;
+        border-right: 1px solid #B7D3FF;
+    }
+
+    /* Hilangkan tooltip accidental pada mobile dengan mengurangi pointer event chart */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-top: 0.25rem !important;
+            padding-left: 0.9rem !important;
+            padding-right: 0.9rem !important;
+        }
+
+        [data-testid="stSidebar"] {
+            width: 82vw !important;
+            min-width: 82vw !important;
+        }
+
+        section[data-testid="stSidebar"] > div:first-child {
+            padding-top: 0.15rem !important;
+        }
+
+        .rm-chart-scroll {
+            padding: 10px;
+            border-radius: 16px;
+        }
+
+        .rm-chart-scroll [data-testid="stVegaLiteChart"] {
+            min-width: 720px !important;
+            width: 720px !important;
+        }
+
+        /* Di HP, chart bisa digeser horizontal dan tooltip tidak gampang muncul sendiri */
+        .rm-chart-scroll canvas,
+        .rm-chart-scroll svg {
+            pointer-events: none !important;
+        }
+
+        /* Kurangi jarak header publik dashboard yang terlalu jauh */
+        div[style*="text-align:center"][style*="padding:20px"] {
+            padding-top: 4px !important;
+            padding-bottom: 4px !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -2357,6 +2422,8 @@ st.markdown("""
 # ---------------------------------------------------------
 # 12. ROUTING UTAMA & SIDEBAR
 # ---------------------------------------------------------
+close_sidebar_on_mobile()
+
 if not st.session_state['logged_in']:
     with st.sidebar:
         render_sidebar_logo()
@@ -2368,6 +2435,7 @@ if not st.session_state['logged_in']:
             st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
             if st.button("🔐 Login Akses", type="primary", use_container_width=True, key="sidebar_login_access"):
                 st.session_state['menu_aktif'] = "Login Akses"
+                st.session_state['_close_sidebar_mobile'] = True
                 st.rerun()
 
             st.divider()
@@ -2376,6 +2444,7 @@ if not st.session_state['logged_in']:
             st.markdown("<div style='padding:8px 4px 6px;font-size:10px;color:#DBEAFE;text-transform:uppercase;letter-spacing:1.8px;margin-top:8px;font-weight:800;'>Portal Login</div>", unsafe_allow_html=True)
             if st.button("← Kembali ke Dashboard", use_container_width=True, key="sidebar_back_dashboard"):
                 st.session_state['menu_aktif'] = "🏠 Dashboard"
+                st.session_state['_close_sidebar_mobile'] = True
                 st.rerun()
             st.divider()
             render_sidebar_access_note("login")
