@@ -1134,25 +1134,50 @@ def halaman_dashboard():
     if st.session_state['logged_in']:
         render_divider_arabic()
         st.markdown("##### 🕐 Aktivitas Terbaru", unsafe_allow_html=True)
+
+        st.markdown("""
+        <div style="
+            background:rgba(255,255,255,0.84);
+            border:1px solid #B7D3FF;
+            border-left:5px solid #2563EB;
+            border-radius:14px;
+            padding:14px 16px;
+            margin:8px 0 12px;
+            box-shadow:0 8px 22px rgba(30,64,175,0.07);
+        ">
+            <div style="font-size:13px;font-weight:800;color:#0F2F74;margin-bottom:4px;">
+                👀 Pantau Aktivitas Sistem
+            </div>
+            <div style="font-size:12px;color:#475569;line-height:1.65;">
+                Lihat riwayat aktivitas terbaru pengguna yang mengakses dan menggunakan web ROHIS-MATCH.
+                Catatan ini membantu Pembina dan Pengurus memantau penggunaan sistem secara lebih transparan.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
         try:
             cursor.execute("SELECT waktu, role, aksi FROM log_aktivitas ORDER BY waktu DESC LIMIT 6")
             logs = cursor.fetchall()
             if logs:
-                st.markdown("""
-                <div style="background:#FFFFFF;border:1px solid #BFDBFE;border-radius:10px;padding:16px;">
-                """, unsafe_allow_html=True)
                 for log in logs:
                     color = "#2563EB" if "berhasil" in log['aksi'].lower() else "#D97706" if "simpan" in log['aksi'].lower() or "input" in log['aksi'].lower() else "#64748B"
                     st.markdown(f"""
-                    <div style="display:flex;gap:12px;align-items:flex-start;padding:7px 0;border-bottom:1px solid #EFF6FF;">
-                        <div style="width:8px;height:8px;border-radius:50%;background:{color};margin-top:4px;flex-shrink:0;"></div>
+                    <div style="
+                        display:flex;
+                        gap:12px;
+                        align-items:flex-start;
+                        padding:10px 0;
+                        border-bottom:1px solid rgba(148,163,184,0.35);
+                    ">
+                        <div style="width:9px;height:9px;border-radius:50%;background:{color};margin-top:5px;flex-shrink:0;"></div>
                         <div style="flex:1;">
-                            <div style="font-size:12px;color:#475569;">{log['aksi']}</div>
-                            <div style="font-size:10px;color:#60A5FA;margin-top:2px;">{log['waktu']} · {log['role'].upper()}</div>
+                            <div style="font-size:12px;color:#334155;">{log['aksi']}</div>
+                            <div style="font-size:10px;color:#3B82F6;margin-top:3px;font-weight:600;">{log['waktu']} · {log['role'].upper()}</div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                st.info("Belum ada aktivitas terbaru yang tercatat.")
         except Exception:
             pass
 
@@ -2112,6 +2137,112 @@ st.markdown("""
     .stDownloadButton button:hover,
     button[kind="primary"]:hover {
         filter: brightness(0.96);
+    }
+</style>
+""", unsafe_allow_html=True)
+
+
+
+# ---------------------------------------------------------
+# FINAL UI PATCH V4: stronger contrast for all blue buttons
+# ---------------------------------------------------------
+st.markdown("""
+<style>
+    /* Semua tombol primary dan form submit yang berwarna biru harus memakai teks putih */
+    .stButton > button[kind="primary"],
+    .stButton > button[kind="primary"] *,
+    .stButton > button[kind="primary"] p,
+    .stButton > button[kind="primary"] div,
+    .stButton > button[kind="primary"] span,
+    .stFormSubmitButton > button,
+    .stFormSubmitButton > button *,
+    .stFormSubmitButton > button p,
+    .stFormSubmitButton > button div,
+    .stFormSubmitButton > button span,
+    [data-testid="stFormSubmitButton"] button,
+    [data-testid="stFormSubmitButton"] button *,
+    [data-testid="stFormSubmitButton"] button p,
+    [data-testid="stFormSubmitButton"] button div,
+    [data-testid="stFormSubmitButton"] button span {
+        color: #FFFFFF !important;
+        fill: #FFFFFF !important;
+        font-weight: 700 !important;
+    }
+
+    .stFormSubmitButton > button,
+    [data-testid="stFormSubmitButton"] button {
+        background: linear-gradient(135deg, #2563EB, #1E40AF) !important;
+        border: 1px solid #1D4ED8 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 22px rgba(37,99,235,0.20) !important;
+    }
+
+    /* Tombol download PDF dan Excel */
+    .stDownloadButton button,
+    .stDownloadButton button *,
+    .stDownloadButton button p,
+    .stDownloadButton button div,
+    .stDownloadButton button span,
+    a[data-testid="stDownloadButton"] button,
+    a[data-testid="stDownloadButton"] button *,
+    a[data-testid="stDownloadButton"] button p,
+    a[data-testid="stDownloadButton"] button div,
+    a[data-testid="stDownloadButton"] button span {
+        color: #FFFFFF !important;
+        fill: #FFFFFF !important;
+        font-weight: 700 !important;
+    }
+
+    .stDownloadButton button,
+    a[data-testid="stDownloadButton"] button {
+        background: linear-gradient(135deg, #2563EB, #1E40AF) !important;
+        border: 1px solid #1D4ED8 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 22px rgba(37,99,235,0.20) !important;
+    }
+
+    /* Tombol filter divisi aktif dan tombol aktif lainnya */
+    div[data-testid="stButton"] button[kind="primary"],
+    div[data-testid="stButton"] button[kind="primary"] *,
+    div[data-testid="stButton"] button[kind="primary"] p,
+    div[data-testid="stButton"] button[kind="primary"] div,
+    div[data-testid="stButton"] button[kind="primary"] span {
+        color: #FFFFFF !important;
+        fill: #FFFFFF !important;
+        font-weight: 700 !important;
+    }
+
+    /* Tombol logout di sidebar: karena background-nya gelap transparan, teksnya juga putih */
+    section[data-testid="stSidebar"] .stButton > button,
+    section[data-testid="stSidebar"] .stButton > button *,
+    section[data-testid="stSidebar"] .stButton > button p,
+    section[data-testid="stSidebar"] .stButton > button span {
+        color: #FFFFFF !important;
+    }
+
+    /* Tapi kartu akun aktif di sidebar tetap gelap teksnya karena background putih */
+    section[data-testid="stSidebar"] div[style*="Akun Aktif"],
+    section[data-testid="stSidebar"] div[style*="Akun Aktif"] * {
+        color: inherit !important;
+    }
+
+    /* Input password eye icon tetap terlihat */
+    [data-testid="stTextInput"] button,
+    [data-testid="stTextInput"] button *,
+    div[data-baseweb="input"] button,
+    div[data-baseweb="input"] button * {
+        color: #0F2F74 !important;
+        fill: #0F2F74 !important;
+    }
+
+    /* Jaga background utama tetap biru lembut merata */
+    html, body, .stApp, [data-testid="stAppViewContainer"] {
+        background:
+            radial-gradient(circle at 14% 14%, rgba(96,165,250,0.25) 0%, rgba(96,165,250,0.12) 30%, transparent 58%),
+            radial-gradient(circle at 84% 12%, rgba(37,99,235,0.20) 0%, rgba(37,99,235,0.10) 34%, transparent 62%),
+            radial-gradient(circle at 50% 92%, rgba(147,197,253,0.26) 0%, rgba(147,197,253,0.12) 38%, transparent 66%),
+            linear-gradient(135deg, #E6F1FF 0%, #F2F8FF 34%, #EAF3FF 72%, #E0EDFF 100%) !important;
+        background-attachment: fixed !important;
     }
 </style>
 """, unsafe_allow_html=True)
